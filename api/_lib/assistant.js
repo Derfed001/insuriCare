@@ -1,4 +1,31 @@
+const fs = require('fs');
+const path = require('path');
 const { classify, maxUrgency } = require('./util');
+
+/**
+ * The owner's writing voice, learned by the VoiceTwin agent.
+ *   voice-style.md      -> the style guide (export from the Colab notebook, see AUTOMATION.md)
+ *   voice-examples.json -> optional [{ "client": "...", "reply": "..." }] real replies
+ * Both are optional: if they are missing or empty the assistant simply uses a neutral friendly tone.
+ */
+function loadVoice() {
+  let style = '', examples = [];
+  try { style = fs.readFileSync(path.join(__dirname, 'voice-style.md'), 'utf8').trim().slice(0, 12000); } catch (_) { /* optional */ }
+  try {
+    const raw = JSON.parse(fs.readFileSync(path.join(__dirname, 'voice-examples.json'), 'utf8'));
+    if (Array.isArray(raw)) examples = raw.filter(e => e && e.client && e.reply).slice(-20);
+  } catch (_) { /* optional */ }
+  if (!style && !examples.length) return '';
+  let out = '\n\nWRITING VOICE\nWrite the "reply" in the voice of the agency owner, using the style guide and real examples below. ' +
+    'This controls ONLY tone, phrasing, language mix and rhythm. Every rule above (AI disclosure, no exact premiums, no promises, escalation, JSON output) still wins over style. ' +
+    'Never copy personal details from the examples; use them for how things are said, not what is true.\n';
+  if (style) out += `\n<style_guide>\n${style}\n</style_guide>\n`;
+  if (examples.length) {
+    out += '\nReal replies the owner has written (imitate the voice):\n' +
+      examples.map(e => `Client: ${String(e.client).slice(0, 300)}\nOwner: ${String(e.reply).slice(0, 300)}`).join('\n\n') + '\n';
+  }
+  return out;
+}
 
 const FALLBACK_REPLY =
   "Thanks for reaching out to InsuriCare. A team member will reply to you shortly. " +
@@ -28,6 +55,9 @@ Claims or incidents (accident, theft, hospital, death), complaints or anger, a r
 OUTPUT
 Return ONLY JSON: {"reply": string, "escalate": boolean, "urgency": "urgent"|"high"|"normal", "reason": string}
 "reason" is a short note for the agency owner summarising what the client needs. Keep it under 160 characters.`;
+
+const VOICE = loadVoice();
+const FULL_PROMPT = SYSTEM_PROMPT + VOICE;
 
 function parseModelJson(text) {
   const t = String(text || '').replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -74,7 +104,7 @@ async function viaGemini({ history, text, audio }) {
       signal,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: FULL_PROMPT }] },
         contents,
         generationConfig: { temperature: 0.4, maxOutputTokens: 500, responseMimeType: 'application/json' }
       })
