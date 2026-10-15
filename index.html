@@ -92,7 +92,7 @@
   .nav-cta.ghost:hover{background:var(--mist);transform:none;}
   .menu-btn{display:none;background:none;border:none;cursor:pointer;padding:6px;}
   .menu-btn span{display:block;width:22px;height:2px;background:var(--navy);margin:5px 0;}
-  @media (max-width:900px){
+  @media (max-width:1100px){
     nav.links{display:none;}
     .menu-btn{display:block;}
     .nav-ctas{display:none;}
@@ -101,14 +101,15 @@
   /* mobile drawer */
   .drawer{
     position:fixed;inset:0;background:var(--navy-deep);z-index:100;
-    display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
-    padding:40px;gap:22px;width:100%;max-width:100vw;overflow:hidden;
+    display:flex;flex-direction:column;justify-content:flex-start;align-items:flex-start;
+    padding:84px 32px 40px;gap:16px;width:100%;max-width:100vw;overflow-x:hidden;overflow-y:auto;
     opacity:0;visibility:hidden;pointer-events:none;
     transition:opacity .25s ease, visibility 0s linear .25s;
   }
   .drawer.open{opacity:1;visibility:visible;pointer-events:auto;transition:opacity .25s ease;}
   body.menu-open{overflow:hidden;}
-  .drawer a{color:#fff;font-family:'Fraunces',serif;font-size:1.5rem;font-weight:500;}
+  .drawer a{color:#fff;font-family:'Fraunces',serif;font-size:1.3rem;font-weight:500;}
+  .drawer .d-label{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:#5fd6c4;margin-top:8px;}
   .drawer a.drawer-cta{
     color:var(--navy-deep);background:var(--teal);padding:12px 20px;border-radius:6px;
     font-family:'Inter',sans-serif;font-size:1rem;font-weight:700;margin-top:10px;
@@ -388,9 +389,204 @@
     border:1px solid rgba(255,255,255,0.25);color:#fff;font-weight:600;font-size:0.95rem;transition:background .2s ease;
   }
   .call-now:hover{background:rgba(255,255,255,0.08);}
+
+  /* ===== Skip link, scrolled header ===== */
+  .skip{position:absolute;left:12px;top:-60px;background:var(--navy);color:#fff;padding:10px 16px;border-radius:6px;z-index:200;font-weight:600;transition:top .2s ease;}
+  .skip:focus{top:12px;}
+  header.scrolled{box-shadow:0 6px 24px rgba(10,37,64,0.08);}
+  :focus-visible{outline:2px solid var(--teal);outline-offset:3px;}
+
+  /* ===== Dropdown navigation ===== */
+  .dd{position:relative;}
+  .dd-btn{
+    background:none;border:0;cursor:pointer;font:500 0.92rem 'Inter',sans-serif;color:var(--navy);
+    display:inline-flex;align-items:center;gap:6px;padding:0 0 4px;
+  }
+  .dd-btn svg{transition:transform .2s ease;}
+  .dd.open .dd-btn svg{transform:rotate(180deg);}
+  .dd-menu{
+    position:absolute;top:calc(100% + 16px);left:-18px;min-width:300px;background:#fff;
+    border:1px solid var(--line);border-radius:12px;padding:8px;
+    box-shadow:0 18px 40px rgba(10,37,64,0.14);
+    opacity:0;visibility:hidden;transform:translateY(6px);
+    transition:opacity .18s ease,transform .18s ease,visibility 0s linear .18s;
+  }
+  .dd-menu::before{content:"";position:absolute;left:0;right:0;top:-18px;height:18px;}
+  .dd.open .dd-menu{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease,transform .18s ease;}
+  @media (hover:hover){ .dd:hover .dd-menu{opacity:1;visibility:visible;transform:none;transition:opacity .18s ease,transform .18s ease;} }
+  nav.links .dd-menu a{display:block;padding:12px 14px;border-radius:8px;}
+  nav.links .dd-menu a::after{display:none;}
+  nav.links .dd-menu a:hover{background:var(--mist);}
+  .dd-menu b{display:block;font-size:0.92rem;color:var(--navy);}
+  .dd-menu span{display:block;font-size:0.8rem;color:var(--muted);margin-top:2px;font-weight:400;}
+
+  /* ===== Hero: video slot, drifting light, office-hours countdown ===== */
+  .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.3;z-index:0;}
+  .hero::before{
+    content:"";position:absolute;inset:-25%;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(40% 40% at 20% 30%, rgba(0,168,150,.20), transparent 70%),
+      radial-gradient(35% 35% at 80% 20%, rgba(46,144,250,.18), transparent 70%),
+      radial-gradient(40% 40% at 60% 85%, rgba(0,168,150,.12), transparent 70%);
+    animation:drift 20s ease-in-out infinite alternate;
+  }
+  @keyframes drift{from{transform:translate3d(-3%,-2%,0) scale(1);}to{transform:translate3d(3%,2%,0) scale(1.08);}}
+  .hero .wrap.status-wrap{display:block;margin-top:52px;}
+  .status-card{
+    display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
+    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);border-radius:14px;
+    padding:20px 24px;backdrop-filter:blur(6px);
+  }
+  .status-info{display:flex;align-items:center;gap:14px;min-width:220px;}
+  .status-info .dot{width:12px;height:12px;border-radius:50%;background:#94a3b8;flex-shrink:0;box-shadow:0 0 0 0 rgba(16,185,129,.6);}
+  .status-info .dot.open{background:var(--success);animation:pulse 2s infinite;}
+  @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55);}70%{box-shadow:0 0 0 10px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
+  .status-info b{display:block;color:#fff;font-size:1rem;}
+  .status-info span{display:block;color:#9db4d8;font-size:.82rem;margin-top:2px;}
+  .cd{display:flex;gap:10px;}
+  .cd div{min-width:68px;text-align:center;background:rgba(7,26,47,.55);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 6px;}
+  .cd b{display:block;font-family:'IBM Plex Mono',monospace;font-size:1.5rem;color:#fff;font-weight:500;line-height:1.1;}
+  .cd span{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:#9db4d8;}
+  .status-actions{display:flex;gap:10px;flex-wrap:wrap;}
+  .status-actions a{
+    display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:8px;font-weight:600;font-size:.88rem;
+    border:1px solid rgba(255,255,255,.3);color:#fff;transition:background .2s ease;
+  }
+  .status-actions a:hover{background:rgba(255,255,255,.1);}
+  .status-actions a.solid{background:var(--teal);border-color:var(--teal);}
+  .status-actions a.solid:hover{background:var(--teal-dark);}
+  @media (max-width:640px){
+    .status-card{padding:18px;}
+    .cd{width:100%;}
+    .cd div{flex:1;min-width:0;}
+    .status-actions{width:100%;}
+    .status-actions a{flex:1;justify-content:center;}
+  }
+
+  /* ===== Scroll reveal ===== */
+  .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
+  .reveal.in{opacity:1;transform:none;}
+
+  /* ===== Choose your cover (plan cards) ===== */
+  .plans{background:var(--mist);}
+  .plan-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  @media (max-width:960px){ .plan-grid{grid-template-columns:1fr;max-width:520px;} }
+  .plan-card{
+    background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;
+    transition:transform .25s ease,box-shadow .25s ease;
+  }
+  .plan-card:hover{transform:translateY(-6px);box-shadow:0 22px 44px rgba(10,37,64,.12);}
+  .plan-top{
+    background:linear-gradient(150deg,var(--navy-deep),var(--navy) 60%,#0d3a5c);color:#fff;padding:30px 28px 26px;position:relative;overflow:hidden;
+  }
+  .plan-top::after{content:"";position:absolute;right:-40px;top:-40px;width:150px;height:150px;border-radius:50%;background:rgba(0,168,150,.22);}
+  .plan-top .ico{width:46px;height:46px;border-radius:12px;background:rgba(255,255,255,.1);display:flex;align-items:center;justify-content:center;margin-bottom:18px;position:relative;z-index:1;}
+  .plan-top .tag{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:#5fd6c4;position:relative;z-index:1;}
+  .plan-top h3{color:#fff;font-size:1.4rem;margin-top:6px;position:relative;z-index:1;}
+  .plan-body{padding:26px 28px 28px;display:flex;flex-direction:column;flex:1;}
+  .plan-body p{color:var(--muted);font-size:.93rem;margin-bottom:18px;}
+  .plan-body ul{list-style:none;margin-bottom:26px;flex:1;}
+  .plan-body li{display:flex;gap:10px;align-items:flex-start;padding:7px 0;font-size:.94rem;color:var(--ink);}
+  .plan-body li svg{flex-shrink:0;margin-top:3px;}
+  .plan-cta{
+    display:flex;align-items:center;justify-content:center;gap:8px;background:var(--teal);color:#fff;font-weight:700;
+    padding:14px;border-radius:10px;transition:background .2s ease;font-size:.95rem;
+  }
+  .plan-cta:hover{background:var(--teal-dark);}
+
+  /* ===== Corporate / group banner ===== */
+  .corp{padding:0;background:var(--navy-deep);}
+  .corp-inner{
+    position:relative;overflow:hidden;display:grid;grid-template-columns:1.3fr .7fr;gap:40px;align-items:center;
+    padding:72px 0;
+  }
+  .corp-inner::before{
+    content:"";position:absolute;inset:0;
+    background:radial-gradient(50% 90% at 90% 50%, rgba(0,168,150,.22), transparent 70%),radial-gradient(40% 70% at 5% 0%, rgba(46,144,250,.16), transparent 70%);
+    pointer-events:none;
+  }
+  @media (max-width:860px){ .corp-inner{grid-template-columns:1fr;padding:56px 0;} }
+  .corp h2{color:#fff;font-size:clamp(1.7rem,3.2vw,2.4rem);margin-bottom:14px;position:relative;}
+  .corp p{color:#b9c7de;max-width:560px;margin-bottom:26px;position:relative;}
+  .corp-actions{display:flex;gap:14px;flex-wrap:wrap;position:relative;}
+  .corp-actions a{display:inline-flex;align-items:center;gap:9px;padding:14px 24px;border-radius:8px;font-weight:600;font-size:.95rem;transition:transform .2s ease,background .2s ease;}
+  .corp-actions a:hover{transform:translateY(-2px);}
+  .corp-actions .solid{background:var(--teal);color:#fff;}
+  .corp-actions .solid:hover{background:var(--teal-dark);}
+  .corp-actions .line{border:1px solid rgba(255,255,255,.35);color:#fff;}
+  .corp-list{list-style:none;position:relative;border-left:1px solid rgba(255,255,255,.18);padding-left:28px;}
+  @media (max-width:860px){ .corp-list{border-left:0;padding-left:0;border-top:1px solid rgba(255,255,255,.18);padding-top:24px;} }
+  .corp-list li{color:#dbe4f2;padding:8px 0;font-size:.95rem;display:flex;gap:10px;align-items:center;}
+  .corp-list li::before{content:"";width:6px;height:6px;border-radius:50%;background:#5fd6c4;flex-shrink:0;}
+
+  /* ===== FAQ ===== */
+  .faq{background:#fff;}
+  .faq-list{max-width:820px;display:flex;flex-direction:column;gap:12px;}
+  .faq-item{border:1px solid var(--line);border-radius:12px;background:#fff;transition:border-color .2s ease,box-shadow .2s ease;}
+  .faq-item[open]{border-color:var(--teal);box-shadow:0 10px 26px rgba(10,37,64,.06);}
+  .faq-item summary{
+    list-style:none;cursor:pointer;padding:20px 24px;font-weight:600;color:var(--navy);display:flex;justify-content:space-between;align-items:center;gap:16px;
+  }
+  .faq-item summary::-webkit-details-marker{display:none;}
+  .faq-item summary::after{content:"+";font-size:1.5rem;line-height:1;color:var(--teal-dark);font-weight:400;transition:transform .2s ease;}
+  .faq-item[open] summary::after{content:"\2212";}
+  .faq-item p{padding:0 24px 22px;color:var(--muted);font-size:.96rem;max-width:68ch;}
+
+  /* ===== Footer (multi-column) ===== */
+  footer{padding:64px 0 28px;}
+  .foot-grid{display:grid;grid-template-columns:1.5fr 1fr 1fr 1.2fr;gap:44px;padding-bottom:40px;border-bottom:1px solid rgba(255,255,255,.1);}
+  @media (max-width:900px){ .foot-grid{grid-template-columns:1fr 1fr;gap:36px;} }
+  @media (max-width:520px){ .foot-grid{grid-template-columns:1fr;} }
+  .foot-grid h4{font-family:'IBM Plex Mono',monospace;font-size:.74rem;letter-spacing:.14em;text-transform:uppercase;color:#5fd6c4;margin-bottom:16px;font-weight:500;}
+  .foot-grid a,.foot-grid p{display:block;font-size:.9rem;color:#9db4d8;margin-bottom:10px;}
+  .foot-grid a:hover{color:#fff;}
+  .foot-grid .foot-blurb{max-width:340px;line-height:1.6;margin-top:16px;}
+  .foot-grid .brand-name{color:#fff;}
+  .foot-bottom{display:flex;justify-content:space-between;gap:12px;flex-wrap:wrap;padding-top:24px;font-size:.8rem;color:#5e708c;}
+
+  /* ===== Advisors / service desks (AgriFin "Our Speakers" pattern) ===== */
+  .team{background:var(--mist);}
+  .team-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  @media (max-width:1060px){ .team-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .team-grid{grid-template-columns:1fr;} }
+  .team-card{background:#fff;border:1px solid var(--line);border-radius:16px;overflow:hidden;display:flex;flex-direction:column;transition:transform .25s ease,box-shadow .25s ease;}
+  .team-card:hover{transform:translateY(-6px);box-shadow:0 22px 44px rgba(10,37,64,.12);}
+  .team-ph{aspect-ratio:4/3;background:linear-gradient(150deg,var(--navy-deep),var(--navy) 60%,#0d3a5c);position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden;}
+  .team-ph::after{content:"";position:absolute;right:-36px;top:-36px;width:130px;height:130px;border-radius:50%;background:rgba(0,168,150,.25);}
+  .team-ph svg{position:relative;z-index:1;}
+  .team-ph img{width:100%;height:100%;object-fit:cover;position:relative;z-index:1;}
+  .team-body{padding:22px 22px 24px;display:flex;flex-direction:column;flex:1;}
+  .team-body h3{font-size:1.12rem;margin-bottom:4px;}
+  .team-role{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.1em;text-transform:uppercase;color:var(--teal-dark);margin-bottom:12px;}
+  .team-body p{color:var(--muted);font-size:.9rem;margin-bottom:18px;flex:1;}
+  .team-link{display:flex;align-items:center;justify-content:center;gap:8px;border:1px solid var(--line);border-radius:10px;padding:12px;font-weight:600;font-size:.9rem;color:var(--navy);transition:background .2s ease,border-color .2s ease,color .2s ease;}
+  .team-link:hover{background:var(--teal);border-color:var(--teal);color:#fff;}
+
+  /* ===== Resources: printable checklists (AgriFin "Resources" pattern) ===== */
+  .res-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:24px;}
+  @media (max-width:960px){ .res-grid{grid-template-columns:1fr;max-width:620px;} }
+  .res-card{background:#fff;border:1px solid var(--line);border-radius:16px;padding:28px;display:flex;flex-direction:column;}
+  .res-card .tag{font-family:'IBM Plex Mono',monospace;font-size:.7rem;letter-spacing:.14em;text-transform:uppercase;color:var(--teal-dark);margin-bottom:8px;}
+  .res-card h3{font-size:1.25rem;margin-bottom:14px;}
+  .res-card ul,.res-card ol{margin:0 0 18px 18px;color:var(--ink);font-size:.93rem;flex:1;}
+  .res-card li{padding:4px 0;}
+  .res-card li b{color:var(--navy);}
+  .res-note{font-size:.8rem;color:var(--muted);margin-bottom:18px;}
+  .res-print{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--navy);color:#fff;border:0;border-radius:10px;padding:12px 16px;font:600 .9rem 'Inter',sans-serif;cursor:pointer;transition:background .2s ease;}
+  .res-print:hover{background:var(--teal-dark);}
+  #printArea{display:none;}
+  @media print{
+    body.print-one > *:not(#printArea){display:none !important;}
+    body.print-one #printArea{display:block;padding:24px;font-family:'Inter',sans-serif;color:#000;}
+    body.print-one #printArea h3{font-size:20px;margin:8px 0 12px;}
+    body.print-one #printArea li{margin:4px 0;}
+    body.print-one #printArea .pa-head{border-bottom:2px solid #0A2540;padding-bottom:8px;font-size:12px;}
+    body.print-one #printArea .res-print{display:none;}
+  }
 </style>
 </head>
 <body>
+<a class="skip" href="#main">Skip to content</a>
 
 <header>
   <div class="nav">
@@ -402,12 +598,27 @@
       </svg>
       <div class="brand-name">Insuri<span>Care</span></div>
     </div>
-    <nav class="links">
-      <a href="#coverage">Coverage</a>
+    <nav class="links" aria-label="Main">
+      <div class="dd">
+        <button class="dd-btn" type="button" aria-expanded="false" aria-haspopup="true">Covers <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg></button>
+        <div class="dd-menu">
+          <a href="#coverage"><b>Personal cover</b><span>Life, medical, motor, savings and pensions</span></a>
+          <a href="#plans"><b>Choose your cover</b><span>Protect, grow and retire, or insure a business</span></a>
+          <a href="#group"><b>Group &amp; business</b><span>WIBA, corporate medical, group life and pension</span></a>
+        </div>
+      </div>
       <a href="#why">Why Us</a>
       <a href="#partners">Partners</a>
-      <a href="#process">Process</a>
-      <a href="#claims">Claims</a>
+      <div class="dd">
+        <button class="dd-btn" type="button" aria-expanded="false" aria-haspopup="true">Resources <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 4.5L6 8l3.5-3.5"/></svg></button>
+        <div class="dd-menu">
+          <a href="#process"><b>How it works</b><span>From enquiry to active cover</span></a>
+          <a href="#claims"><b>Claims guide</b><span>What to do when you need to claim</span></a>
+          <a href="#resources"><b>Checklists</b><span>Documents, claims and renewal guides to print</span></a>
+          <a href="#team"><b>Our service desks</b><span>Who handles which kind of cover</span></a>
+          <a href="#faq"><b>FAQs</b><span>Quick answers to common questions</span></a>
+        </div>
+      </div>
       <a href="#contact">Contact</a>
     </nav>
     <div class="nav-ctas">
@@ -426,18 +637,30 @@
 
 <div class="drawer" id="drawer">
   <button class="drawer-close" id="drawerClose" aria-label="Close menu">&times;</button>
-  <a href="#coverage">Coverage</a>
+  <span class="d-label">Covers</span>
+  <a href="#coverage">Personal cover</a>
+  <a href="#plans">Choose your cover</a>
+  <a href="#group">Group &amp; business</a>
+  <span class="d-label">Company</span>
   <a href="#why">Why Us</a>
+  <a href="#team">Our service desks</a>
   <a href="#partners">Partners</a>
-  <a href="#process">Process</a>
-  <a href="#claims">Claims</a>
+  <span class="d-label">Resources</span>
+  <a href="#resources">Checklists</a>
+  <a href="#process">How it works</a>
+  <a href="#claims">Claims guide</a>
+  <a href="#faq">FAQs</a>
   <a href="#contact">Contact</a>
   <a href="tel:+254115129088">Call us: 0115 129 088</a>
   <a href="https://wa.me/254115129088?text=Hi%20InsuriCare%2C%20I%27d%20like%20a%20quote." target="_blank" rel="noopener" class="drawer-cta">Get a Quote on WhatsApp</a>
 </div>
 
 <!-- ===== HERO ===== -->
+<span id="main"></span>
 <section class="hero">
+  <video class="hero-video" autoplay muted loop playsinline preload="none" aria-hidden="true" tabindex="-1">
+    <source src="assets/hero.mp4" type="video/mp4" onerror="this.parentElement.remove()">
+  </video>
   <div class="wrap">
     <div>
       <div class="eyebrow">Nairobi · Utawala · Independent Agency</div>
@@ -480,6 +703,24 @@
         <circle cx="200" cy="230" r="34" fill="#0A2540" stroke="#00A896" stroke-width="1.5"/>
         <path d="M188 230L197 239L214 218" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
       </svg>
+    </div>
+  </div>
+  <div class="wrap status-wrap">
+    <div class="status-card">
+      <div class="status-info">
+        <span class="dot" id="statusDot"></span>
+        <div><b id="statusTitle">Office hours</b><span id="statusSub">Nairobi time (EAT)</span></div>
+      </div>
+      <div class="cd" role="timer" aria-label="Time until our office status changes">
+        <div><b id="cdD">00</b><span>Days</span></div>
+        <div><b id="cdH">00</b><span>Hours</span></div>
+        <div><b id="cdM">00</b><span>Minutes</span></div>
+        <div><b id="cdS">00</b><span>Seconds</span></div>
+      </div>
+      <div class="status-actions">
+        <a class="solid" href="tel:+254115129088"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>Call now</a>
+        <a href="#contact" data-open-call>Request a call</a>
+      </div>
     </div>
   </div>
   <div class="hero-bg-line"></div>
@@ -571,6 +812,63 @@
 </section>
 
 <!-- ===== WHY US ===== -->
+<!-- ===== CHOOSE YOUR COVER ===== -->
+<section class="plans" id="plans">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Choose your cover</div>
+      <h2>Start with what you want to protect</h2>
+      <p>Pick the path closest to your situation. We will compare options across our partner insurers and come back with a clear recommendation.</p>
+    </div>
+    <div class="plan-grid">
+      <article class="plan-card">
+        <div class="plan-top"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l8 3v6c0 4.500-3.300 8-8 9-4.700-1-8-4.500-8-9V6l8-3z"/><path d="M8.500 12l2.500 2.500 4.500-5"/></svg></div><div class="tag">Protect</div><h3>Life, health &amp; motor</h3></div>
+        <div class="plan-body">
+          <p>Cover for you, your family and your car when the unexpected happens.</p>
+          <ul><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Life Insurance</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Individual Medical Cover</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Personal Accident Covers</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Car Insurance</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Travel Insurance</li></ul>
+          <a href="#contact" class="plan-cta" data-quote="Life Insurance">Get a quote</a>
+        </div>
+      </article>
+      <article class="plan-card">
+        <div class="plan-top"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg></div><div class="tag">Grow &amp; retire</div><h3>Savings, education &amp; pensions</h3></div>
+        <div class="plan-body">
+          <p>Build wealth steadily and plan for school fees and retirement.</p>
+          <ul><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Savings and Investment Plans</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Education Plans</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Retirement Planning</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Pension Transfer and Consolidation</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Unit Trusts (MMF) and Trust Fund</li></ul>
+          <a href="#contact" class="plan-cta" data-quote="Investment / Savings Plan">Get a quote</a>
+        </div>
+      </article>
+      <article class="plan-card">
+        <div class="plan-top"><div class="ico"><svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="4" y="3" width="10" height="18" rx="1"/><path d="M14 9h6v12h-6M8 7h2M8 11h2M8 15h2M17 13h0M17 17h0"/></svg></div><div class="tag">Business &amp; group</div><h3>Staff, assets &amp; operations</h3></div>
+        <div class="plan-body">
+          <p>Cover your team and your business under one agency relationship.</p>
+          <ul><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>WIBA and Group Accident Covers</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Corporate Medical Cover</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Group Life, Credit Life and Pension</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Property, Domestic Package and Contractor's All Risk</li><li><svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true"><circle cx="8" cy="8" r="8" fill="#00A896" opacity=".14"/><path d="M4.5 8.2L7 10.6l4.5-5" stroke="#00897A" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>Marine and Transit Goods Insurance</li></ul>
+          <a href="#contact" class="plan-cta" data-quote="Corporate Medical Cover">Get a group quote</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===== GROUP / CORPORATE BANNER ===== -->
+<section class="corp" id="group">
+  <div class="wrap">
+    <div class="corp-inner">
+      <div>
+        <div class="eyebrow" style="color:#5fd6c4;">Group &amp; corporate</div>
+        <h2>Insuring a team, school, sacco or business?</h2>
+        <p>Tell us your staff size and the covers you need, from WIBA and medical to group life and pension, including contracting out of NSSF Tier 2. We will prepare group options across our partner insurers.</p>
+        <div class="corp-actions">
+          <a href="#contact" class="solid" data-quote="Corporate Medical Cover">Request a group quote</a>
+          <a href="tel:+254115129088" class="line"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>Call us</a>
+        </div>
+      </div>
+      <ul class="corp-list">
+        <li>WIBA</li><li>Corporate Medical Cover</li><li>Group Life and Credit Life</li><li>Group Pension</li><li>Group Accident Covers</li><li>Group Professional Indemnity</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <section class="why" id="why">
   <div class="wrap">
     <div class="sec-head">
@@ -594,6 +892,55 @@
         <h3>Local, reachable</h3>
         <p>Based in Utawala, Nairobi — reachable by phone, WhatsApp, or in person when a claim needs a human.</p>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== ADVISORS / SERVICE DESKS ===== -->
+<section class="team" id="team">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow" id="teamEyebrow">Our service desks</div>
+      <h2 id="teamTitle">The right person for your cover</h2>
+      <p id="teamLead">Four areas of the agency, so you know where to start. Pick the one closest to what you need.</p>
+    </div>
+    <div class="team-grid" id="teamGrid">
+      <article class="team-card">
+        <div class="team-ph"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+        <div class="team-body">
+          <h3>Personal Cover Desk</h3>
+          <div class="team-role">Life · Medical · Motor</div>
+          <p>Life insurance, individual medical, car, travel and personal accident covers for you and your family.</p>
+          <a href="#contact" class="team-link" data-quote="Life Insurance">Talk to this desk</a>
+        </div>
+      </article>
+      <article class="team-card">
+        <div class="team-ph"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 3v18h18"/><path d="M7 15l4-4 3 3 5-6"/></svg></div>
+        <div class="team-body">
+          <h3>Savings &amp; Retirement Desk</h3>
+          <div class="team-role">Invest · Save · Retire</div>
+          <p>Investment, savings and education plans, unit trusts, retirement planning, pension transfer and consolidation.</p>
+          <a href="#contact" class="team-link" data-quote="Investment / Savings Plan">Talk to this desk</a>
+        </div>
+      </article>
+      <article class="team-card">
+        <div class="team-ph"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9"/><path d="M16 3.1a4 4 0 0 1 0 7.8"/></svg></div>
+        <div class="team-body">
+          <h3>Group &amp; Corporate Desk</h3>
+          <div class="team-role">WIBA · Medical · Pension</div>
+          <p>WIBA, corporate medical, group life, credit life, group pension and contracting out of NSSF Tier 2.</p>
+          <a href="#contact" class="team-link" data-quote="Corporate Medical Cover">Request a group quote</a>
+        </div>
+      </article>
+      <article class="team-card">
+        <div class="team-ph"><svg width="54" height="54" viewBox="0 0 24 24" fill="none" stroke="#5fd6c4" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 2l8 3v6c0 5-3.4 9.3-8 11-4.6-1.7-8-6-8-11V5z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <div class="team-body">
+          <h3>Claims Support Desk</h3>
+          <div class="team-role">Guidance · Follow-up</div>
+          <p>Tell us what happened and we guide you through your insurer's claims process and follow it up with you.</p>
+          <a href="#claims" class="team-link" >See the claims guide</a>
+        </div>
+      </article>
     </div>
   </div>
 </section>
@@ -676,6 +1023,76 @@
         <a href="#contact" data-open-call class="claim-btn secondary">Request a callback</a>
         <a href="tel:+254115129088" class="claim-btn secondary"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 16.9v3a2 2 0 0 1-2.2 2 19.8 19.8 0 0 1-8.6-3.1 19.5 19.5 0 0 1-6-6A19.8 19.8 0 0 1 2.1 4.2 2 2 0 0 1 4.1 2h3a2 2 0 0 1 2 1.7c.1 1 .4 1.9.7 2.8a2 2 0 0 1-.5 2.1L8.1 9.9a16 16 0 0 0 6 6l1.3-1.3a2 2 0 0 1 2.1-.4c.9.3 1.8.6 2.8.7a2 2 0 0 1 1.7 2z"/></svg>Call us now</a>
       </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== RESOURCES ===== -->
+<section class="resources" id="resources">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Resources</div>
+      <h2>Checklists you can keep</h2>
+      <p>Three short guides to save you time. Print them or save them as a PDF from your phone or computer.</p>
+    </div>
+    <div class="res-grid">
+      <article class="res-card" id="resDocs">
+        <div class="tag">Getting a quote</div>
+        <h3>Documents we usually need</h3>
+        <ul>
+          <li><b>Everyone:</b> copy of national ID or passport, KRA PIN, phone number and email.</li>
+          <li><b>Car:</b> logbook or registration copy, make, model, year and estimated value.</li>
+          <li><b>Medical and life:</b> date of birth of each person covered, and birth certificates for children.</li>
+          <li><b>Business or group:</b> company KRA PIN, registration certificate, staff list with dates of birth and roles, and annual payroll for WIBA.</li>
+        </ul>
+        <p class="res-note">This is a typical list. Your insurer may ask for more depending on the cover.</p>
+        <button type="button" class="res-print" data-print="resDocs">Print or save as PDF</button>
+      </article>
+      <article class="res-card" id="resClaim">
+        <div class="tag">When something happens</div>
+        <h3>If you need to claim</h3>
+        <ol>
+          <li>Make sure everyone is safe and get medical help if needed.</li>
+          <li>Call or WhatsApp us on +254 115 129 088 as soon as you can, ideally within 24 hours.</li>
+          <li>Have your policy number ready.</li>
+          <li>Take photos. Report theft or road accidents to the police and get the abstract or OB number.</li>
+          <li>Do not repair, dispose of property or admit liability before your insurer approves.</li>
+          <li>Keep all receipts and send the documents we ask for.</li>
+        </ol>
+        <button type="button" class="res-print" data-print="resClaim">Print or save as PDF</button>
+      </article>
+      <article class="res-card" id="resRenew">
+        <div class="tag">Renewing or switching</div>
+        <h3>Before you renew</h3>
+        <ul>
+          <li>Check the sum insured still matches the real value of what you are covering.</li>
+          <li>Read the exclusions and the excess you would pay on a claim.</li>
+          <li>Compare the same level of cover across insurers, not just the price.</li>
+          <li>Note your renewal date so cover never lapses.</li>
+          <li>Tell us about changes: a new car, a new address, more dependants or more staff.</li>
+        </ul>
+        <p class="res-note">Ask us to compare options. We handle the paperwork if you switch.</p>
+        <button type="button" class="res-print" data-print="resRenew">Print or save as PDF</button>
+      </article>
+    </div>
+  </div>
+</section>
+
+<!-- ===== FAQ ===== -->
+<section class="faq" id="faq">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">FAQs</div>
+      <h2>Quick answers</h2>
+      <p>Not here? Call us or message us on WhatsApp and we will help.</p>
+    </div>
+    <div class="faq-list">
+      <details class="faq-item"><summary>How do I get a quote?</summary><p>Message us on WhatsApp, call +254 115 129 088, or use the quote form on this page. Tell us what you want to cover and we will compare options across our partner insurers and come back to you.</p></details>
+      <details class="faq-item"><summary>Do you work with only one insurer?</summary><p>No. InsuriCare is an independent agency. We work with Britam, CIC Group, Jubilee Insurance, The Monarch Insurance, Definite Assurance, APA Insurance, Heritage Insurance, ICEA LION Group, Old Mutual and Sanlam Allianz.</p></details>
+      <details class="faq-item"><summary>How do I file a claim?</summary><p>Contact us as soon as possible by WhatsApp or phone, and have your policy number ready. We guide you through your insurer's claims process and follow it up on your behalf.</p></details>
+      <details class="faq-item"><summary>Can you cover my staff or business?</summary><p>Yes. We arrange WIBA, corporate medical, group life, group pension, group accident, group professional indemnity, property, marine and transit covers, and contracting out of NSSF Tier 2.</p></details>
+      <details class="faq-item"><summary>Can you help me move or combine my pensions?</summary><p>We arrange pension transfer and pension consolidation. Talk to us about your current scheme and we will explain the options that apply to you.</p></details>
+      <details class="faq-item"><summary>Where are you located?</summary><p>Marafiki Court, Room E3, Utawala, Nairobi. You can also reach us by phone, WhatsApp or email at insuricareagency@gmail.com.</p></details>
     </div>
   </div>
 </section>
@@ -812,16 +1229,42 @@
 
 <footer>
   <div class="wrap">
-    <div class="foot-row">
-      <div class="brand-name">Insuri<span style="color:#5fd6c4;">Care</span> Insurance Agency</div>
-      <div class="foot-links">
+    <div class="foot-grid">
+      <div>
+        <div class="brand-name">Insuri<span style="color:#5fd6c4;">Care</span> Insurance Agency</div>
+        <p class="foot-blurb">An independent insurance agency in Utawala, Nairobi. We arrange personal and group cover with leading Kenyan insurers and stay with you from quote to claim.</p>
+      </div>
+      <div>
+        <h4>Pages</h4>
         <a href="#coverage">Coverage</a>
+        <a href="#plans">Choose your cover</a>
         <a href="#partners">Partners</a>
+        <a href="#process">How it works</a>
+        <a href="#team">Service desks</a>
         <a href="#claims">Claims</a>
-        <a href="#contact">Contact</a>
+        <a href="#resources">Checklists</a>
+        <a href="#faq">FAQs</a>
+      </div>
+      <div>
+        <h4>Quick links</h4>
+        <a href="#contact" data-quote="Life Insurance">Life insurance</a>
+        <a href="#contact" data-quote="Individual Medical Cover">Medical cover</a>
+        <a href="#contact" data-quote="Car Insurance">Car insurance</a>
+        <a href="#contact" data-quote="Corporate Medical Cover">Group &amp; corporate</a>
+        <a href="#contact" data-open-call>Request a call</a>
+      </div>
+      <div>
+        <h4>Contact</h4>
+        <a href="tel:+254115129088">+254 115 129 088</a>
+        <a href="https://wa.me/254115129088" target="_blank" rel="noopener">WhatsApp us</a>
+        <a href="mailto:insuricareagency@gmail.com">insuricareagency@gmail.com</a>
+        <p>Marafiki Court, Room E3,<br>Utawala, Nairobi</p>
       </div>
     </div>
-    <p class="foot-copy">&copy; 2026 InsuriCare Insurance Agency, Utawala, Nairobi. All rights reserved.</p>
+    <div class="foot-bottom">
+      <span>&copy; 2026 InsuriCare Insurance Agency, Utawala, Nairobi. All rights reserved.</span>
+      <span>Partner names and logos belong to their respective owners.</span>
+    </div>
   </div>
 </footer>
 
@@ -832,6 +1275,8 @@
 <a href="https://wa.me/254115129088?text=Hi%20InsuriCare%2C%20I%27d%20like%20to%20get%20in%20touch." target="_blank" rel="noopener" class="wa-float" aria-label="Chat with InsuriCare on WhatsApp">
   <svg viewBox="0 0 24 24" fill="none"><path d="M12 2C6.48 2 2 6.48 2 12c0 1.85.5 3.58 1.38 5.07L2 22l5.06-1.35A9.94 9.94 0 0 0 12 22c5.52 0 10-4.48 10-10S17.52 2 12 2z" fill="#25D366"/><path d="M17.4 14.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.5-.17-.01-.37-.01-.57-.01s-.52.07-.8.37c-.27.3-1.04 1.02-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.62.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.42.25-.7.25-1.29.17-1.42-.07-.12-.27-.2-.57-.35z" fill="#fff"/></svg>
 </a>
+
+<div id="printArea" aria-hidden="true"></div>
 
 <script>
   const menuBtn = document.getElementById('menuBtn');
@@ -930,6 +1375,110 @@
       cbBtn.disabled = false;
     }
   });
+  // ===== Site behaviours (header, dropdowns, office hours, reveal, quote presets, print) =====
+  // Office hours shown in the hero countdown (Nairobi time, EAT = UTC+3). Keys: 0=Sun ... 6=Sat. Edit to match your real hours.
+  const OFFICE_HOURS = { 1:[8,17], 2:[8,17], 3:[8,17], 4:[8,17], 5:[8,17], 6:[9,13] };
+
+  // Optional: add real people to replace the service-desk cards, e.g.
+  // const TEAM = [{ name:'Jane Wanjiku', role:'Senior Advisor', photo:'assets/team/jane.jpg', phone:'+254700000000', bio:'Life and medical specialist.' }];
+  const TEAM = [];
+
+  (function(){
+    const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Header shadow on scroll
+    const header = $('header');
+    const onScroll = () => header.classList.toggle('scrolled', window.scrollY > 8);
+    addEventListener('scroll', onScroll, { passive:true }); onScroll();
+
+    // Dropdown menus: click/tap and keyboard (hover also works via CSS on desktop)
+    const closeDD = () => $$('.dd.open').forEach(d => { d.classList.remove('open'); d.querySelector('.dd-btn').setAttribute('aria-expanded','false'); });
+    $$('.dd').forEach(dd => {
+      const btn = dd.querySelector('.dd-btn');
+      btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const open = !dd.classList.contains('open');
+        closeDD();
+        dd.classList.toggle('open', open);
+        btn.setAttribute('aria-expanded', String(open));
+      });
+    });
+    document.addEventListener('click', closeDD);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeDD(); });
+
+    // Quote buttons preselect the cover type in the form
+    $$('[data-quote]').forEach(a => a.addEventListener('click', () => {
+      showTab('quote');
+      const sel = document.getElementById('cover');
+      const opt = [...sel.options].find(o => o.value === a.dataset.quote || o.text === a.dataset.quote);
+      if (opt) sel.value = opt.value;
+    }));
+
+    // Office-hours status + countdown
+    const DAYS = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'];
+    const t12 = h => ((h % 12) || 12) + ':00 ' + (h >= 12 ? 'pm' : 'am');
+    function officeState(){
+      const n = new Date(Date.now() + 3*3600*1000);
+      const day = n.getUTCDay(), now = n.getUTCHours()*3600 + n.getUTCMinutes()*60 + n.getUTCSeconds();
+      const today = OFFICE_HOURS[day];
+      if (today && now >= today[0]*3600 && now < today[1]*3600)
+        return { open:true, left: today[1]*3600 - now, label:'Closes at ' + t12(today[1]) + ' today' };
+      if (today && now < today[0]*3600)
+        return { open:false, left: today[0]*3600 - now, label:'Opens today at ' + t12(today[0]) };
+      for (let d = 1; d <= 7; d++){
+        const nd = (day + d) % 7, w = OFFICE_HOURS[nd];
+        if (w) return { open:false, left:(86400 - now) + (d-1)*86400 + w[0]*3600, label:'Opens ' + (d === 1 ? 'tomorrow' : DAYS[nd]) + ' at ' + t12(w[0]) };
+      }
+      return { open:false, left:0, label:'' };
+    }
+    const pad = n => String(n).padStart(2,'0');
+    function tick(){
+      const s = officeState(), l = s.left;
+      $('#statusDot').classList.toggle('open', s.open);
+      $('#statusTitle').textContent = s.open ? "We're open now" : "We're closed right now";
+      $('#statusSub').textContent = s.label + ' · Nairobi time (EAT)' + (s.open ? '' : ' · call or WhatsApp anytime');
+      $('#cdD').textContent = pad(Math.floor(l/86400));
+      $('#cdH').textContent = pad(Math.floor(l%86400/3600));
+      $('#cdM').textContent = pad(Math.floor(l%3600/60));
+      $('#cdS').textContent = pad(l%60);
+      $('.cd').setAttribute('aria-label', s.open ? 'Time until we close' : 'Time until we open');
+    }
+    tick(); setInterval(tick, 1000);
+
+    // Optional real team (replaces the service-desk cards when TEAM has entries)
+    if (TEAM.length){
+      $('#teamEyebrow').textContent = 'Our team';
+      $('#teamTitle').textContent = 'Meet your advisors';
+      $('#teamLead').textContent = 'Real people, based in Nairobi, who will stay with you from quote to claim.';
+      const esc = s => String(s || '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+      $('#teamGrid').innerHTML = TEAM.map(p => `
+        <article class="team-card">
+          <div class="team-ph">${p.photo ? `<img src="${esc(p.photo)}" alt="${esc(p.name)}" loading="lazy">` : ''}</div>
+          <div class="team-body"><h3>${esc(p.name)}</h3><div class="team-role">${esc(p.role)}</div><p>${esc(p.bio)}</p>
+          ${p.phone ? `<a class="team-link" href="tel:${esc(p.phone)}">Call ${esc(p.name.split(' ')[0])}</a>` : ''}</div>
+        </article>`).join('');
+    }
+
+    // Print / save a checklist as PDF
+    const pa = $('#printArea');
+    $$('[data-print]').forEach(b => b.addEventListener('click', () => {
+      const card = document.getElementById(b.dataset.print).cloneNode(true);
+      card.querySelectorAll('button').forEach(x => x.remove());
+      pa.innerHTML = '<div class="pa-head"><b>InsuriCare Insurance Agency</b> · Utawala, Nairobi · +254 115 129 088 · insuricareagency@gmail.com</div>' + card.innerHTML;
+      document.body.classList.add('print-one');
+      const done = () => { document.body.classList.remove('print-one'); pa.innerHTML = ''; };
+      window.addEventListener('afterprint', done, { once:true });
+      window.print();
+    }));
+
+    // Scroll reveal
+    if (!reduce && 'IntersectionObserver' in window){
+      const els = $$('.sec-head, .plan-card, .team-card, .res-card, .corp-inner, .step, .why-card, .faq-item');
+      const io = new IntersectionObserver((entries) => entries.forEach(e => { if (e.isIntersecting || e.boundingClientRect.top < 0){ e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold:0.12, rootMargin:'0px 0px -6% 0px' });
+      els.forEach(el => { el.classList.add('reveal'); io.observe(el); });
+    }
+  })();
 </script>
 
 </body>
