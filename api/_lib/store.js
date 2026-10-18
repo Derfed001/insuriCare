@@ -34,6 +34,18 @@ async function firstTime(key, ttlSec = 86400) {
   await set(key, 1, ttlSec);
   return true;
 }
+/** Increment a counter (for rate limits). The key expires `ttlSec` after it is first created. */
+async function incr(key, ttlSec) {
+  if (remote()) {
+    const n = await upstash(['INCR', key]);
+    if (n === 1) await upstash(['EXPIRE', key, ttlSec]);
+    return n;
+  }
+  const cur = (await get(key)) || 0;
+  const e = mem.get(key);
+  mem.set(key, { val: cur + 1, exp: e && e.exp ? e.exp : Date.now() + ttlSec * 1000 });
+  return cur + 1;
+}
 function _reset() { mem.clear(); }
 
-module.exports = { get, set, firstTime, _reset };
+module.exports = { get, set, firstTime, incr, _reset };

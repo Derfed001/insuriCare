@@ -7,6 +7,9 @@ The static site works on its own. This folder also contains Vercel functions (`/
 | **Call us** buttons | Tap-to-call `tel:+254115129088` in the header, hero, claims section, contact list, and a floating button. Works with no setup. |
 | **Request a call** form | Client leaves name, number, best time and topic. `/api/callback` alerts you (Telegram and/or WhatsApp) with an AI-written call brief. If the backend is not live, the form falls back to a pre-filled WhatsApp message. |
 | **WhatsApp assistant** | `/api/whatsapp` answers client texts and voice notes instantly, collects quote details, and **alerts you only when a human is needed**. |
+| **SMS assistant** | `/api/sms` (Africa's Talking two-way SMS) answers client texts with the same assistant, escalation and alerts. Replies are kept to about two SMS. `STOP` and `START` are honoured. |
+| **Website chatbot** | The "Ask our assistant" button on the site (`/api/chat`). It works out what a visitor needs, explains the options in plain language as it types, and **searches the web (Google Search through Gemini)** for current insurer-specific facts, with source links. It needs only `GEMINI_API_KEY`. |
+| **Phone line** | `/api/at-voice` (Africa's Talking Voice) answers calls: it says it is a virtual assistant, then a menu: **1** talk to the assistant, **2** claim or emergency (leave a message, urgent alert), **3** request a call back, **0** speak to a team member (rings your phone in office hours, otherwise takes a message). |
 
 ## When you get alerted
 
@@ -20,9 +23,13 @@ Routine questions ("what is life insurance?", "do you cover motorbikes?") are ha
 
 After a hand-off the AI stays quiet for `TAKEOVER_HOURS` (default 6). If the client keeps writing you get one reminder every 30 minutes at most.
 
+## Writing style
+The assistant answers clients in your formal **client-mode** style (greeting by time of day, structured lines, no Sheng, no invented payment details). See `docs/CLIENT_STYLE_PROMPT.md` for the rules, example replies, your own message templates, and the phone-call script.
+
 ## Honest limits
 
-- **Live AI phone calls are not included.** The assistant handles WhatsApp text and voice notes. Answering real phone calls with a voice needs a telephony provider (e.g. Africa's Talking or Twilio Voice) wired to your voice service. That is a separate build.
+- **Phone calls are turn-based, not real-time.** Africa's Talking records what the caller says, the assistant answers, then it listens again (up to 4 turns per call). Expect a pause of a few seconds each time. For real-time conversation you would need a streaming voice provider.
+- **Your cloned voice on calls:** the line speaks with Africa's Talking's text-to-speech voice. To use your cloned voice, your own agent (`ASSISTANT_URL`) must return an `audio_url`, which the call then plays instead. Callers are still told it is a virtual assistant.
 - **The assistant introduces itself as an AI.** It should never pose as you, especially if you plug in your cloned voice. Clients are entitled to know, and it protects your agency's reputation.
 - **It never quotes exact premiums, confirms cover, or promises claim outcomes.** It gathers details; you decide.
 - **WhatsApp's 24-hour rule:** the business number can only send free-form messages within 24 hours of a client's last message. Alerts to you and confirmations to website visitors outside that window need approved *message templates* (set `WA_TEMPLATE_ALERT`, `WA_TEMPLATE_CALLBACK`). Telegram alerts have no such limit, so set those up too.
@@ -31,16 +38,20 @@ After a hand-off the AI stays quiet for `TAKEOVER_HOURS` (default 6). If the cli
 
 ## Setup (about 45 minutes)
 
-### 1. Alerts to your phone (Telegram, free, do this first)
+### 1. Alerts to your phone
+**Simplest: SMS.** If Africa's Talking and `OWNER_PHONE` are set, every alert is also texted to your phone, short and without links. No extra setup. (In the Africa's Talking sandbox these appear in the simulator, not on your phone.) Turn off with `ALERT_SMS=0`.
+
+**Optional: Telegram (free).** Skip this if SMS is enough.
 1. In Telegram, message **@BotFather**, send `/newbot`, copy the **bot token**.
 2. Message your new bot once, then open `https://api.telegram.org/bot<TOKEN>/getUpdates` and copy `chat.id`.
 3. Save as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ### 2. The assistant brain (choose one)
 - **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Set `GEMINI_MODEL` to a current model name from AI Studio (default `gemini-2.5-flash`).
-- **Your own voice/text agent:** host it anywhere with an HTTPS endpoint and set `ASSISTANT_URL` (+ optional `ASSISTANT_TOKEN`). The site sends:
+- **Your own voice/text agent:** host it anywhere with a stable HTTPS endpoint (a Colab notebook link is not an endpoint) and set `ASSISTANT_URL`. If `GEMINI_API_KEY` is also set, Gemini answers whenever your agent is offline (+ optional `ASSISTANT_TOKEN`). The site sends:
   ```json
   { "channel": "whatsapp", "phone": "2547...", "name": "Jane", "text": "…",
+    "first_message": true, "system_prompt": "facts + rules + client-mode style (see docs/CLIENT_STYLE_PROMPT.md)",
     "audio": { "mime": "audio/ogg", "base64": "…" },
     "history": [ { "role": "user|assistant", "text": "…" } ] }
   ```
@@ -74,5 +85,30 @@ Project → Settings → Environment Variables: add everything from `.env.exampl
 
 Run the offline tests any time with `npm test` (no accounts needed).
 
+## Website chatbot
+- **Setup:** nothing beyond `GEMINI_API_KEY` and a redeploy. Test it by opening the site and asking "Compare medical covers for a family of four".
+- **What it will and won't do:** it explains covers, what to compare, and how insurers differ, using web search for current facts. It never states an exact premium, never confirms cover or decides claims, and tells visitors to get an exact quote from the team. Claims and complaints show buttons for WhatsApp, a call, or a call-back request.
+- **Cost protection:** each visitor is limited to `CHAT_RATE_LIMIT` messages per 10 minutes, and the whole site to `CHAT_DAILY_LIMIT` per day. Raise or lower these in Vercel. Without Upstash the counters are per server instance and less strict, so set up Upstash.
+- **Search grounding is billed by Google** after a free allowance and the allowance can change. Check your plan in AI Studio and keep an eye on usage in the first weeks.
+- **Privacy:** chats are not stored by the site. Visitor messages go to Google (Gemini) to be answered, and the chat window warns visitors not to share ID numbers, passwords or PINs. Check Google's current terms for the free tier before real clients use it, and consider enabling billing. Add a short privacy notice to the site.
+- **Accuracy:** web pages can be out of date or wrong. The bot shows its sources so visitors can check, and says when it is unsure, but review its answers yourself in the first weeks.
+
+## Africa's Talking setup (SMS and calls)
+1. Create an account at africastalking.com and an app. Note the **username** and generate an **API key**.
+2. Choose a long random string as `AT_WEBHOOK_SECRET`.
+3. **SMS:** get a shortcode or long number (and optionally an approved sender ID). In the dashboard open SMS → Callback URLs → *Incoming messages* and set  
+   `https://YOUR-SITE.vercel.app/api/sms?key=YOUR_SECRET`
+4. **Voice:** get a voice number. In the dashboard open Voice → your number → *Callback URL* and set  
+   `https://YOUR-SITE.vercel.app/api/at-voice?key=YOUR_SECRET`
+5. Add `AT_USERNAME`, `AT_API_KEY`, `AT_WEBHOOK_SECRET`, `OWNER_PHONE` (and the optional ones) in Vercel, then **Redeploy**.
+6. Test: text the SMS number "What is life insurance?" and call the voice number. Press 1, speak, then press `#`. Press 2 and leave a message: you should get an URGENT alert on Telegram.
+
+Notes
+- SMS and call charges apply per message and per minute. Check Africa's Talking's Kenya rates before you publish the numbers.
+- Africa's Talking can use a sandbox for SMS (`AT_SANDBOX=1`). Voice needs a live number.
+- Keep your office hours in sync: `OFFICE_HOURS` in `index.html` (website) and `api/_lib/hours.js` (phone transfers), or set `OFFICE_HOURS_JSON`.
+- If you record or store calls, tell callers and follow Kenya's Data Protection Act. Recordings sit on Africa's Talking's servers; the alert links to them.
+- Africa's Talking's exact attribute names and voice options can change. If a call behaves oddly, compare the XML in `api/at-voice.js` with their current Voice XML docs.
+
 ## Taking a conversation over / giving it back
-Reply to the client yourself using the `wa.me` link in the alert. The AI resumes automatically after `TAKEOVER_HOURS`. To resume sooner, delete the key `takeover:<client number>` in the Upstash console.
+Reply to the client yourself using the link in the alert (`wa.me` for WhatsApp, `tel:` for SMS and calls). The AI resumes automatically after `TAKEOVER_HOURS`. To resume sooner, delete the key `takeover:<client number>` in the Upstash console.

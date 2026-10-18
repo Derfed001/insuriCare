@@ -1,10 +1,11 @@
 const { classify, maxUrgency } = require('./util');
+const { buildStyle } = require('./persona');
 
 const FALLBACK_REPLY =
-  "Thanks for reaching out to InsuriCare. A team member will reply to you shortly. " +
-  "If it's urgent, please call us on +254 115 129 088.";
+  "Thank you for reaching out to InsuriCare. A team member will respond to you shortly. " +
+  "If it is urgent, kindly call +254 115 129 088. Regards";
 
-const SYSTEM_PROMPT = `You are the AI assistant for InsuriCare Insurance Agency, an independent insurance agency in Utawala, Nairobi, Kenya (Marafiki Court, Room E3). Phone/WhatsApp: +254 115 129 088. Email: insuricareagency@gmail.com.
+const BASE_PROMPT = `You are the AI assistant for InsuriCare Insurance Agency, an independent insurance agency in Utawala, Nairobi, Kenya (Marafiki Court, Room E3). Phone/WhatsApp: +254 115 129 088. Email: insuricareagency@gmail.com.
 
 IDENTITY
 - You are an AI assistant, not a human. Say so plainly if asked, and in your first message to a new client.
@@ -16,7 +17,7 @@ Group: WIBA, group professional indemnity, corporate medical, group pension, gro
 Underwriting partners: Britam, CIC Group, Jubilee Insurance, The Monarch Insurance, Definite Assurance, APA Insurance, Heritage Insurance, ICEA LION Group, Old Mutual, Sanlam Allianz.
 
 HOW TO BEHAVE
-- Reply in the language the client uses (English or Kiswahili). Be warm, brief and clear: WhatsApp-length, 1-4 short sentences, no markdown.
+- Keep replies short enough for WhatsApp (about 1-5 sentences). No markdown formatting.
 - For a quote, collect the basics one or two questions at a time: what they want covered, who or what (age and number of dependants; car make, year and value; number of staff), and their budget or preferred insurer.
 - Explain products in plain language. You may describe how a cover generally works.
 - NEVER state exact premiums, guarantee that a claim will be paid, confirm that cover is in force, give legal or medical advice, or ask for card numbers, PINs, passwords or M-Pesa PINs.
@@ -26,8 +27,14 @@ WHEN A HUMAN IS NEEDED (set escalate = true)
 Claims or incidents (accident, theft, hospital, death), complaints or anger, a request to speak to a person or get a call, a client ready to buy, pay or sign, group or corporate enquiries (about 10+ people), anything you cannot answer confidently. When escalating, tell the client a team member will follow up and that they can call +254 115 129 088 if urgent.
 
 OUTPUT
-Return ONLY JSON: {"reply": string, "escalate": boolean, "urgency": "urgent"|"high"|"normal", "reason": string}
-"reason" is a short note for the agency owner summarising what the client needs. Keep it under 160 characters.`;
+Return ONLY JSON: {"reply": string, "escalate": boolean, "urgency": "urgent"|"high"|"normal", "reason": string, "heard": string}
+"reason" is a short note for the agency owner summarising what the client needs. Keep it under 160 characters.
+"heard" is only for audio: a one or two sentence transcript of what the client said (English or Kiswahili). Leave it empty for text.`;
+
+/** Full system prompt = facts and rules + the owner's client-mode writing style + conversation state. */
+function buildSystemPrompt({ channel = 'whatsapp', firstMessage = true, nowMs = Date.now() } = {}) {
+  return BASE_PROMPT + '\n\n' + buildStyle({ channel, firstMessage, nowMs });
+}
 
 function parseModelJson(text) {
   const t = String(text || '').replace(/^```(?:json)?/i, '').replace(/```$/, '').trim();
@@ -60,7 +67,7 @@ async function viaCustomAssistant(payload) {
   return o;
 }
 
-async function viaGemini({ history, text, audio }) {
+async function viaGemini({ history, text, audio, channel }) {
   const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const contents = (history || []).map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.text }] }));
   const parts = [];
@@ -74,7 +81,7 @@ async function viaGemini({ history, text, audio }) {
       signal,
       headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
       body: JSON.stringify({
-        systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+        systemInstruction: { parts: [{ text: buildSystemPrompt({ channel, firstMessage: !(history && history.length) }) }] },
         contents,
         generationConfig: { temperature: 0.4, maxOutputTokens: 500, responseMimeType: 'application/json' }
       })
@@ -96,8 +103,17 @@ async function askAssistant({ channel = 'whatsapp', phone, name, text, audio, hi
   const rules = classify(text);
   let model = null;
   try {
-    if (process.env.ASSISTANT_URL) model = await viaCustomAssistant({ channel, phone, name, text, audio, history });
-    else if (process.env.GEMINI_API_KEY) model = await viaGemini({ history, text, audio });
+    const firstMessage = !history.length;
+    if (process.env.ASSISTANT_URL) {
+      try {
+        model = await viaCustomAssistant({ channel, phone, name, text, audio, history, first_message: firstMessage, system_prompt: buildSystemPrompt({ channel, firstMessage }) });
+      } catch (err) {
+        // Your own agent (e.g. a Colab tunnel) can be offline. Fall back to Gemini when a key is set.
+        console.error('custom assistant failed:', err.message);
+        if (!process.env.GEMINI_API_KEY) throw err;
+      }
+    }
+    if (!model && process.env.GEMINI_API_KEY) model = await viaGemini({ history, text, audio, channel });
   } catch (err) {
     console.error('assistant error:', err.message);
   }
@@ -111,13 +127,13 @@ async function askAssistant({ channel = 'whatsapp', phone, name, text, audio, hi
   const urgency = escalate ? (maxUrgency(rules.urgency, modelUrgency) || 'high') : null;
   const reasons = [...rules.reasons];
   if (model.reason) reasons.push(String(model.reason).slice(0, 200));
-  return { reply: String(model.reply).slice(0, 1500), audio_url: model.audio_url, escalate, urgency, reasons };
+  return { reply: String(model.reply).slice(0, 1500), audio_url: model.audio_url, heard: model.heard ? String(model.heard).slice(0, 400) : '', escalate, urgency, reasons };
 }
 
 /** One-paragraph brief for the owner before a call-back. */
 async function callBrief({ name, cover, notes }) {
   const base = `${name} wants a call about ${cover}.` + (notes ? ` Notes: ${notes}` : '');
-  if (!process.env.GEMINI_API_KEY || process.env.ASSISTANT_URL) return base;
+  if (!process.env.GEMINI_API_KEY) return base;
   try {
     const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
     const r = await withTimeout(15000, signal => fetch(
@@ -139,4 +155,29 @@ async function callBrief({ name, cover, notes }) {
   }
 }
 
-module.exports = { askAssistant, callBrief, FALLBACK_REPLY, SYSTEM_PROMPT };
+/** Short transcript/summary of a voicemail so the owner can read it instead of listening. */
+async function voicemailBrief(audio) {
+  if (!audio || !process.env.GEMINI_API_KEY) return '';
+  try {
+    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const r = await withTimeout(20000, signal => fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
+        method: 'POST', signal,
+        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [
+            { inline_data: { mime_type: String(audio.mime).split(';')[0], data: audio.base64 } },
+            { text: 'This is a voicemail left for an insurance agency in Kenya (English or Kiswahili). In at most 2 short sentences in English, state the caller name if given, what they want, and any number or time they mention. No markdown.' }
+          ] }],
+          generationConfig: { temperature: 0.2, maxOutputTokens: 160 }
+        })
+      }));
+    if (!r.ok) throw new Error('gemini ' + r.status);
+    return ((await r.json())?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '').trim();
+  } catch (e) {
+    console.error('voicemail brief error:', e.message);
+    return '';
+  }
+}
+
+module.exports = { askAssistant, callBrief, voicemailBrief, buildSystemPrompt, FALLBACK_REPLY };

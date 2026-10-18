@@ -1,3 +1,4 @@
+const { sendSms, atConfigured } = (() => { try { return require('./at'); } catch { return {}; } })();
 const GRAPH = () => `https://graph.facebook.com/${process.env.WA_GRAPH_VERSION || 'v21.0'}`;
 
 async function waPost(body) {
@@ -38,6 +39,20 @@ async function downloadMedia(mediaId) {
   return { mime: mime_type, base64: Buffer.from(await file.arrayBuffer()).toString('base64') };
 }
 
+/** Short version of an alert for SMS (about two messages): keep the lines you act on, drop links. */
+function compactForSms(urgency, title, lines) {
+  const tag = urgency === 'urgent' ? 'URGENT' : urgency === 'high' ? 'ACTION NEEDED' : 'FYI';
+  const keep = lines
+    .filter(l => l && /^(Why|Heard|Summary|Message|Phone|Client|Best time|Cover):/.test(l))
+    .map(l => l.replace(/\s+/g, ' '));
+  const body = `[${tag}] ${title}. ${keep.join(' | ')}`;
+  return body.length > 300 ? body.slice(0, 297) + '...' : body;
+}
+
+/** Alerts to your own phone by SMS. Needs OWNER_PHONE and Africa's Talking; turn off with ALERT_SMS=0. */
+const smsAlertEnabled = () =>
+  !!(atConfigured && atConfigured() && process.env.OWNER_PHONE && process.env.ALERT_SMS !== '0');
+
 /**
  * Alert the agency owner. Sends to Telegram (reliable, no 24h rule) and/or WhatsApp.
  * WhatsApp alerts use an approved template if WA_TEMPLATE_ALERT is set, otherwise free text
@@ -59,6 +74,10 @@ async function alertOwner({ urgency, title, lines }) {
       ? sendTemplate(process.env.OWNER_WHATSAPP, process.env.WA_TEMPLATE_ALERT, text)
       : sendText(process.env.OWNER_WHATSAPP, text)]);
   }
+  if (smsAlertEnabled()) {
+    const to = String(process.env.OWNER_PHONE).replace(/\D/g, '');
+    jobs.push(['sms', sendSms(to, compactForSms(urgency, title, lines))]);
+  }
   if (!jobs.length) console.warn('alertOwner: no alert channel configured:\n' + text);
 
   const results = await Promise.allSettled(jobs.map(j => j[1]));
@@ -70,4 +89,4 @@ async function alertOwner({ urgency, title, lines }) {
   return sent;
 }
 
-module.exports = { sendText, sendAudio, sendTemplate, downloadMedia, alertOwner, waConfigured };
+module.exports = { sendText, sendAudio, sendTemplate, downloadMedia, alertOwner, waConfigured, compactForSms };
