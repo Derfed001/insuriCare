@@ -47,7 +47,7 @@ The assistant answers clients in your formal **client-mode** style (greeting by 
 3. Save as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ### 2. The assistant brain (choose one)
-- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Set `GEMINI_MODEL` to a current model name from AI Studio (default `gemini-2.5-flash`).
+- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health`: it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
 - **Your own voice/text agent:** host it anywhere with a stable HTTPS endpoint (a Colab notebook link is not an endpoint) and set `ASSISTANT_URL`. If `GEMINI_API_KEY` is also set, Gemini answers whenever your agent is offline (+ optional `ASSISTANT_TOKEN`). The site sends:
   ```json
   { "channel": "whatsapp", "phone": "2547...", "name": "Jane", "text": "…",
@@ -85,7 +85,9 @@ Project → Settings → Environment Variables: add everything from `.env.exampl
 
 Run the offline tests any time with `npm test` (no accounts needed).
 
-## Website chatbot
+## Website chatbot (Makokha)
+- **Name:** the assistant is called **Makokha** on the website, WhatsApp, SMS and calls, and always says it is an AI.
+- **What it knows:** it reads your own website text (services, claims steps, checklists, FAQs, contacts, hours) and searches the web for current insurer facts. After you edit the site, redeploy and it knows the changes.
 - **Setup:** nothing beyond `GEMINI_API_KEY` and a redeploy. Test it by opening the site and asking "Compare medical covers for a family of four".
 - **What it will and won't do:** it explains covers, what to compare, and how insurers differ, using web search for current facts. It never states an exact premium, never confirms cover or decides claims, and tells visitors to get an exact quote from the team. Claims and complaints show buttons for WhatsApp, a call, or a call-back request.
 - **Cost protection:** each visitor is limited to `CHAT_RATE_LIMIT` messages per 10 minutes, and the whole site to `CHAT_DAILY_LIMIT` per day. Raise or lower these in Vercel. Without Upstash the counters are per server instance and less strict, so set up Upstash.

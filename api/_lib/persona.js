@@ -10,6 +10,7 @@ function greetingEAT(nowMs = Date.now()) {
 }
 
 const CLIENT_STYLE = `VOICE AND STYLE (client mode)
+Your name is Makokha. Introduce yourself as Makokha, InsuriCare's virtual assistant (an AI), never as a human or the owner.
 Write the way the agency's advisor writes to clients: polite, systematic, clear and direct, in standard Kenyan English.
 - First message of a conversation: greet for the time of day ("Good morning", "Good afternoon", "Good evening"), then "Sir/Madam" unless the client has given a title or name ("Good morning Mr. Kamau"). Use Mr./Ms. only if the client stated it. Later messages: do not greet again.
 - Medium-length, instructional sentences that focus on the next action. Never a long unstructured block: put steps, payment details, expiry dates and requirements on short separate lines or numbered items.
@@ -38,7 +39,7 @@ const SMS_STYLE = `ON SMS
 
 /** What the phone menu says before the caller reaches the assistant. */
 function callGreeting(nowMs = Date.now()) {
-  return `${greetingEAT(nowMs)}, you have reached InsuriCare Insurance Agency. I am the agency's virtual assistant.`;
+  return `${greetingEAT(nowMs)}, you have reached InsuriCare Insurance Agency. I am Makokha, the agency's virtual assistant.`;
 }
 
 function buildStyle({ channel = 'whatsapp', firstMessage = true, nowMs = Date.now() } = {}) {
@@ -49,7 +50,7 @@ function buildStyle({ channel = 'whatsapp', firstMessage = true, nowMs = Date.no
   if (channel === 'call') {
     parts.push('CONVERSATION STATE\nThe phone menu has already greeted the caller. Answer directly.');
   } else if (firstMessage) {
-    parts.push(`CONVERSATION STATE\nThis is the first message. Greet with "${greeting}" and, in one short phrase, say you are the agency's virtual assistant.`);
+    parts.push(`CONVERSATION STATE\nThis is the first message. Greet with "${greeting}" and, in one short phrase, say you are Makokha, the agency's virtual assistant.`);
   } else {
     parts.push('CONVERSATION STATE\nThis is an ongoing conversation. Do not greet again.');
   }

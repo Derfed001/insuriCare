@@ -18,6 +18,10 @@ const callback = require('../api/callback');
 const sms = require('../api/sms');
 const voice = require('../api/at-voice');
 const chat = require('../api/chat');
+const health = require('../api/health');
+const gem = require('../api/_lib/gemini');
+const { buildChatPrompt } = require('../api/_lib/chatPrompt');
+const { getSiteKnowledge } = require('../api/_lib/siteKnowledge');
 const { buildSystemPrompt } = require('../api/_lib/assistant');
 const { greetingEAT, callGreeting } = require('../api/_lib/persona');
 
@@ -31,6 +35,9 @@ global.fetch = async (url, opts = {}) => {
   const ok = (j) => ({ ok: true, status: 200, headers: { get: () => 'audio/wav' }, json: async () => j, text: async () => JSON.stringify(j), arrayBuffer: async () => Buffer.from('fakeaudio') });
   if (String(url).includes('africastalking.com/version1/messaging')) return ok({ SMSMessageData: { Recipients: [{ status: 'Success', number: body.to }] } });
   if (String(url).startsWith('https://rec.example')) return ok({});
+  const deadHit = (global.__deadModels || []).find(m => String(url).includes('models/' + m));
+  if (deadHit) return { ok: false, status: 404, body: null, json: async () => ({}), text: async () => '{"error":{"code":404}}' };
+  if (/\/v1beta\/models\/[^:?]+$/.test(String(url))) return { ok: true, status: 200, json: async () => ({ name: 'models/x' }), text: async () => '{}' };
   if (String(url).includes('streamGenerateContent')) {
     if (global.__chatFail) return { ok: false, status: global.__chatFail, body: null };
     const enc = new TextEncoder();
@@ -435,6 +442,47 @@ const reset = () => { calls = []; store._reset(); geminiDown = false; };
   ev = events(res); assert.ok(ev.some(e => e.t === 'error') && ev.at(-1).t === 'done');
   global.__chatFail = 0;
   console.log('ok  chat: retries without search if grounding is refused; friendly error if Gemini is down');
+
+  // ================= Makokha, website knowledge, model fallback, health check =================
+  const site = getSiteKnowledge();
+  assert.ok(site.length > 2000 && site.length < 16500, 'site knowledge has a sensible size');
+  assert.ok(/NSSF Tier 2/i.test(site) && /Marafiki Court/i.test(site) && /Office hours/i.test(site));
+  assert.ok(!/Tell me what you want to cover/.test(site) && !/function\s*\(|addEventListener/.test(site), 'chat widget and scripts are not part of the knowledge');
+  const cp = buildChatPrompt(), ap = buildSystemPrompt({ channel: 'whatsapp', firstMessage: true });
+  assert.ok(cp.includes('Makokha') && ap.includes('Makokha') && cp.includes('Marafiki Court') && ap.includes('NSSF'));
+  assert.ok(callGreeting().includes('Makokha'));
+  console.log('ok  Makokha name, the assistant reads the website content, and the chat widget text is excluded');
+
+  // retired model (404) -> next model is used, dead one is not retried
+  reset(); gem._reset();
+  process.env.GEMINI_MODEL = 'gemini-2.5-flash'; global.__deadModels = ['gemini-2.5-flash']; global.__chatCalls = [];
+  global.__chatChunks = [sseChunk('Still working after the model shutdown.')];
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'hello' }], '1.1.1.1'), res);
+  assert.ok(events(res).some(e => e.t === 'text' && e.v.includes('Still working')));
+  assert.ok(!global.__chatCalls.some(c => c.url.includes('gemini-2.5-flash')));
+  const nOk = global.__chatCalls.length;
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'again' }], '1.1.1.2'), res);
+  assert.strictEqual(global.__chatCalls.length, nOk + 1, 'a second request goes straight to the working model');
+  geminiReply = { reply: 'Reply from the WhatsApp assistant.', escalate: false, urgency: 'normal', reason: '' };
+  res = mkRes(); await whatsapp(mkWebhookReq(incoming('m10', '254788888888', { type: 'text', text: { body: 'hi there' } })), res);
+  assert.ok(sentTo('254788888888')[0].body.text.body.includes('WhatsApp assistant'));
+  delete process.env.GEMINI_MODEL; global.__deadModels = []; gem._reset();
+  console.log('ok  retired model (404) -> automatically switches model, for chat and WhatsApp/SMS/calls');
+
+  // health check
+  reset(); gem._reset();
+  res = mkRes(); res.setHeader = () => {}; await health({ headers: { 'x-forwarded-for': '10.0.0.1' } }, res);
+  let hj = JSON.parse(res.body);
+  assert.strictEqual(hj.ok, true); assert.ok(hj.gemini.working && hj.africastalking.apiKeySet && hj.africastalking.webhookSecretSet);
+  assert.ok(!JSON.stringify(hj).includes('atkey') && !JSON.stringify(hj).includes('sekret'), 'no secret value is ever shown');
+  process.env.atsk_fakekey123 = 'x'; global.__deadModels = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash']; gem._reset();
+  res = mkRes(); res.setHeader = () => {}; await health({ headers: { 'x-forwarded-for': '10.0.0.2' } }, res);
+  hj = JSON.parse(res.body);
+  assert.strictEqual(hj.ok, false);
+  assert.ok(hj.warnings.some(w => /looks like an API key/.test(w)) && hj.warnings.some(w => /No Gemini model answered/.test(w)));
+  assert.ok(!JSON.stringify(hj).includes('atsk_fakekey123'), 'misnamed variable name is not echoed');
+  delete process.env.atsk_fakekey123; global.__deadModels = []; gem._reset();
+  console.log('ok  health check: reports settings and Gemini status, spots a key typed into the name box, shows no secrets');
 
   console.log('\nAll tests passed');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -1,15 +1,17 @@
 const { classify, maxUrgency } = require('./util');
 const { buildStyle } = require('./persona');
+const { callGemini, logFailure } = require('./gemini');
+const { getSiteKnowledge } = require('./siteKnowledge');
 
 const FALLBACK_REPLY =
   "Thank you for reaching out to InsuriCare. A team member will respond to you shortly. " +
   "If it is urgent, kindly call +254 115 129 088. Regards";
 
-const BASE_PROMPT = `You are the AI assistant for InsuriCare Insurance Agency, an independent insurance agency in Utawala, Nairobi, Kenya (Marafiki Court, Room E3). Phone/WhatsApp: +254 115 129 088. Email: insuricareagency@gmail.com.
+const BASE_PROMPT = `You are Makokha, the AI assistant for InsuriCare Insurance Agency, an independent insurance agency in Utawala, Nairobi, Kenya (Marafiki Court, Room E3). Phone/WhatsApp: +254 115 129 088. Email: insuricareagency@gmail.com.
 
 IDENTITY
-- You are an AI assistant, not a human. Say so plainly if asked, and in your first message to a new client.
-- Never claim to be the agency owner or any named person.
+- Your name is Makokha. You are an AI assistant, not a human. Say so plainly if asked, and in your first message to a new client.
+- Never claim to be the agency owner or a human team member.
 
 WHAT THE AGENCY ARRANGES
 Personal: investment plans, savings plans, education plans, retirement planning, pension transfer and consolidation, life insurance, unit trusts (MMF), car insurance, personal accident, individual medical, travel, professional indemnity, trust fund.
@@ -33,7 +35,8 @@ Return ONLY JSON: {"reply": string, "escalate": boolean, "urgency": "urgent"|"hi
 
 /** Full system prompt = facts and rules + the owner's client-mode writing style + conversation state. */
 function buildSystemPrompt({ channel = 'whatsapp', firstMessage = true, nowMs = Date.now() } = {}) {
-  return BASE_PROMPT + '\n\n' + buildStyle({ channel, firstMessage, nowMs });
+  return BASE_PROMPT + '\n\n' + buildStyle({ channel, firstMessage, nowMs }) +
+    '\n\nINSURICARE WEBSITE CONTENT (use this for questions about the agency, its covers, process, claims steps, checklists, FAQs and contacts; if it does not cover the question, say a team member will confirm)\n' + getSiteKnowledge();
 }
 
 function parseModelJson(text) {
@@ -52,7 +55,7 @@ async function withTimeout(ms, fn) {
 }
 
 async function viaCustomAssistant(payload) {
-  const r = await withTimeout(25000, signal => fetch(process.env.ASSISTANT_URL, {
+  const r = await withTimeout(30000, signal => fetch(process.env.ASSISTANT_URL, {
     method: 'POST',
     signal,
     headers: {
@@ -68,24 +71,19 @@ async function viaCustomAssistant(payload) {
 }
 
 async function viaGemini({ history, text, audio, channel }) {
-  const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
   const contents = (history || []).map(h => ({ role: h.role === 'assistant' ? 'model' : 'user', parts: [{ text: h.text }] }));
   const parts = [];
   if (audio) parts.push({ inline_data: { mime_type: String(audio.mime).split(';')[0], data: audio.base64 } });
   parts.push({ text: text || '(voice note: transcribe it, then answer it)' });
   contents.push({ role: 'user', parts });
 
-  const r = await withTimeout(25000, signal => fetch(
-    `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-      method: 'POST',
-      signal,
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: buildSystemPrompt({ channel, firstMessage: !(history && history.length) }) }] },
-        contents,
-        generationConfig: { temperature: 0.4, maxOutputTokens: 500, responseMimeType: 'application/json' }
-      })
-    }));
+  const r = await withTimeout(30000, signal => callGemini({ signal, body: {
+    systemInstruction: { parts: [{ text: buildSystemPrompt({ channel, firstMessage: !(history && history.length) }) }] },
+    contents,
+    // Newer Gemini models "think" first and thinking counts toward this limit, so keep it generous.
+    generationConfig: { maxOutputTokens: 2048, responseMimeType: 'application/json' }
+  } }));
+  if (!r.ok) await logFailure(r, 'assistant');
   if (!r.ok) throw new Error('gemini ' + r.status);
   const data = await r.json();
   const out = data?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '';
@@ -135,17 +133,11 @@ async function callBrief({ name, cover, notes }) {
   const base = `${name} wants a call about ${cover}.` + (notes ? ` Notes: ${notes}` : '');
   if (!process.env.GEMINI_API_KEY) return base;
   try {
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-    const r = await withTimeout(15000, signal => fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST', signal,
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text:
-            `You brief an insurance agent before a call-back. In at most 2 short sentences, state what the client wants and the 2-3 questions to ask first. No markdown.\nClient: ${name}\nCover: ${cover}\nNotes: ${notes || 'none'}` }] }],
-          generationConfig: { temperature: 0.3, maxOutputTokens: 160 }
-        })
-      }));
+    const r = await withTimeout(20000, signal => callGemini({ signal, body: {
+      contents: [{ role: 'user', parts: [{ text:
+        `You brief an insurance agent before a call-back. In at most 2 short sentences, state what the client wants and the 2-3 questions to ask first. No markdown.\nClient: ${name}\nCover: ${cover}\nNotes: ${notes || 'none'}` }] }],
+      generationConfig: { maxOutputTokens: 1024 }
+    } }));
     if (!r.ok) throw new Error('gemini ' + r.status);
     const out = (await r.json())?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('').trim();
     return out ? `${base}\nBrief: ${out}` : base;
@@ -159,19 +151,13 @@ async function callBrief({ name, cover, notes }) {
 async function voicemailBrief(audio) {
   if (!audio || !process.env.GEMINI_API_KEY) return '';
   try {
-    const model = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
-    const r = await withTimeout(20000, signal => fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent`, {
-        method: 'POST', signal,
-        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [
-            { inline_data: { mime_type: String(audio.mime).split(';')[0], data: audio.base64 } },
-            { text: 'This is a voicemail left for an insurance agency in Kenya (English or Kiswahili). In at most 2 short sentences in English, state the caller name if given, what they want, and any number or time they mention. No markdown.' }
-          ] }],
-          generationConfig: { temperature: 0.2, maxOutputTokens: 160 }
-        })
-      }));
+    const r = await withTimeout(25000, signal => callGemini({ signal, body: {
+      contents: [{ role: 'user', parts: [
+        { inline_data: { mime_type: String(audio.mime).split(';')[0], data: audio.base64 } },
+        { text: 'This is a voicemail left for an insurance agency in Kenya (English or Kiswahili). In at most 2 short sentences in English, state the caller name if given, what they want, and any number or time they mention. No markdown.' }
+      ] }],
+      generationConfig: { maxOutputTokens: 1024 }
+    } }));
     if (!r.ok) throw new Error('gemini ' + r.status);
     return ((await r.json())?.candidates?.[0]?.content?.parts?.map(p => p.text || '').join('') || '').trim();
   } catch (e) {

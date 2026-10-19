@@ -12,6 +12,7 @@
 const { clean, classify } = require('./_lib/util');
 const store = require('./_lib/store');
 const { buildChatPrompt } = require('./_lib/chatPrompt');
+const { callGemini, logFailure } = require('./_lib/gemini');
 
 const MAX_MESSAGES = 12;
 const MAX_CHARS = 1200;
@@ -31,19 +32,15 @@ function sanitizeMessages(raw) {
   return msgs;
 }
 
-async function callGemini(msgs, useSearch, signal) {
-  const model = process.env.CHAT_MODEL || process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+function ask(msgs, useSearch, signal) {
   const body = {
     systemInstruction: { parts: [{ text: buildChatPrompt() }] },
     contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.text }] })),
-    generationConfig: { temperature: 0.4, maxOutputTokens: 1100 }
+    // Newer Gemini models "think" before answering and thinking counts toward this limit, so keep it generous.
+    generationConfig: { maxOutputTokens: 4096 }
   };
   if (useSearch) body.tools = [{ google_search: {} }];
-  return fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:streamGenerateContent?alt=sse`, {
-    method: 'POST', signal,
-    headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
-    body: JSON.stringify(body)
-  });
+  return callGemini({ body, stream: true, signal });
 }
 
 module.exports = async function handler(req, res) {
@@ -81,9 +78,9 @@ module.exports = async function handler(req, res) {
   let produced = false;
 
   try {
-    let r = await callGemini(msgs, true, ctl.signal);
-    if (!r.ok && (r.status === 400 || r.status === 403)) r = await callGemini(msgs, false, ctl.signal); // search unavailable: answer without it
-    if (!r.ok) throw new Error('gemini ' + r.status);
+    let r = await ask(msgs, true, ctl.signal);
+    if (!r.ok && (r.status === 400 || r.status === 403)) { await logFailure(r, 'chat (with search)'); r = await ask(msgs, false, ctl.signal); } // search unavailable: answer without it
+    if (!r.ok) { await logFailure(r, 'chat'); throw new Error('gemini ' + r.status); }
 
     const reader = r.body.getReader();
     const dec = new TextDecoder();

@@ -13,4 +13,12 @@ function isOpenEAT(nowMs = Date.now()) {
   const h = n.getUTCHours() + n.getUTCMinutes() / 60;
   return h >= w[0] && h < w[1];
 }
-module.exports = { isOpenEAT };
+const DAY = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const t12 = h => ((h % 12) || 12) + (h >= 12 ? 'pm' : 'am');
+function describeHours() {
+  const hh = hours();
+  const open = DAY.map((d, i) => (hh[i] ? `${d} ${t12(hh[i][0])}-${t12(hh[i][1])}` : null)).filter(Boolean);
+  const closed = DAY.filter((d, i) => !hh[i]);
+  return `Office hours (Nairobi time): ${open.join(', ')}${closed.length ? '; closed ' + closed.join(', ') : ''}.`;
+}
+module.exports = { isOpenEAT, describeHours };
