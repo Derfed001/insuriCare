@@ -47,7 +47,7 @@ The assistant answers clients in your formal **client-mode** style (greeting by 
 3. Save as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ### 2. The assistant brain (choose one)
-- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health` (add `?test=1` for a deeper test that really asks Gemini for an answer, with and without web search, and shows Google's reason if it fails): it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
+- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health` (add `?test=1` for a deeper test that really asks Gemini for an answer, with and without web search, and shows Google's reason and the time taken, or a timeout after 15 seconds, if it fails): it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
 - **Your own voice/text agent:** host it anywhere with a stable HTTPS endpoint (a Colab notebook link is not an endpoint) and set `ASSISTANT_URL`. If `GEMINI_API_KEY` is also set, Gemini answers whenever your agent is offline (+ optional `ASSISTANT_TOKEN`). The site sends:
   ```json
   { "channel": "whatsapp", "phone": "2547...", "name": "Jane", "text": "…",

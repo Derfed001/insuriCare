@@ -72,15 +72,32 @@ module.exports = async function handler(req, res) {
 
   const lastUser = msgs[msgs.length - 1].text;
   const ctl = new AbortController();
-  const timer = setTimeout(() => ctl.abort(), 50000);
+  const timer = setTimeout(() => ctl.abort(), 55000);
   const queries = new Set();
   const sources = new Map();
   let produced = false;
 
+  // One attempt, abandoned if Gemini has not started answering within CHAT_FIRST_BYTE_MS (default 20 s).
+  const firstByteMs = parseInt(process.env.CHAT_FIRST_BYTE_MS || '20000', 10);
+  const attempt = async (useSearch) => {
+    const a = new AbortController();
+    const link = () => a.abort();
+    ctl.signal.addEventListener('abort', link);
+    const t = setTimeout(() => a.abort(), firstByteMs);
+    try {
+      return await ask(msgs, useSearch, a.signal);
+    } catch (e) {
+      return { ok: false, status: e && e.name === 'AbortError' ? 'timeout' : 'error', error: e };
+    } finally {
+      clearTimeout(t);                       // the answer has started (or failed): the body can stream on
+    }
+  };
+  const why = async (r, where) => (r.error ? console.error(`${where}: ${r.status} ${r.error.message}`) : logFailure(r, where));
+
   try {
-    let r = await ask(msgs, true, ctl.signal);
-    if (!r.ok && (r.status === 400 || r.status === 403)) { await logFailure(r, 'chat (with search)'); r = await ask(msgs, false, ctl.signal); } // search unavailable: answer without it
-    if (!r.ok) { await logFailure(r, 'chat'); throw new Error('gemini ' + r.status); }
+    let r = await attempt(true);
+    if (!r.ok) { await why(r, 'chat (with search)'); r = await attempt(false); } // slow, refused or failing with search: answer without it
+    if (!r.ok) { await why(r, 'chat'); throw new Error('gemini ' + r.status); }
 
     const reader = r.body.getReader();
     const dec = new TextDecoder();

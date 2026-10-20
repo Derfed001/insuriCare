@@ -38,6 +38,9 @@ global.fetch = async (url, opts = {}) => {
   const deadHit = (global.__deadModels || []).find(m => String(url).includes('models/' + m));
   if (deadHit) return { ok: false, status: 404, body: null, json: async () => ({}), text: async () => '{"error":{"code":404}}' };
   if (/\/v1beta\/models\/[^:?]+$/.test(String(url))) return { ok: true, status: 200, json: async () => ({ name: 'models/x' }), text: async () => '{}' };
+  if (global.__hang && /enerateContent/.test(String(url)) && (global.__hang === 'all' || (body && body.tools))) {
+    return new Promise((_, rej) => opts.signal && opts.signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
+  }
   if (String(url).includes('streamGenerateContent')) {
     if (global.__chatFail) return { ok: false, status: global.__chatFail, body: null };
     const enc = new TextEncoder();
@@ -546,6 +549,26 @@ const reset = () => { calls = []; store._reset(); geminiDown = false; };
   assert.ok(!JSON.stringify(dj).includes('goodkey'));
   global.__chatFail = 0; process.env.GEMINI_API_KEY = keyBefore; gem._reset();
   console.log('ok  health ?test=1: runs a real answer, search and streaming check, explains failures, never shows the key');
+
+  // ================= A stuck Gemini request must not hang the chat or the health page =================
+  reset(); gem._reset();
+  process.env.CHAT_FIRST_BYTE_MS = '40'; global.__hang = 'search'; global.__chatChunks = [sseChunk('Answered without web search after the slow attempt.')];
+  const t0 = Date.now();
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'compare medical covers' }], '13.13.13.1'), res);
+  ev = events(res);
+  assert.ok(ev.some(e => e.t === 'text' && e.v.includes('Answered without web search')) && !ev.some(e => e.t === 'error'));
+  const streamCalls = calls.filter(c => c.url.includes('streamGenerateContent'));
+  assert.ok(streamCalls.length === 2 && streamCalls[0].body.tools && !streamCalls[1].body.tools, 'second attempt has no web search');
+  assert.ok(Date.now() - t0 < 2000, 'gave up quickly instead of waiting');
+  global.__hang = 'all'; reset(); gem._reset();
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'hello' }], '13.13.13.2'), res);
+  ev = events(res); assert.ok(ev.some(e => e.t === 'error') && ev.at(-1).t === 'done', 'a fully stuck Gemini ends with a friendly error');
+  process.env.HEALTH_PROBE_MS = '40'; gem._reset();
+  res = mkRes(); res.setHeader = () => {}; await health({ headers: { 'x-forwarded-for': '13.13.13.3' }, query: { test: '1' } }, res);
+  dj = JSON.parse(res.body);
+  assert.ok(dj.probe.every(x => x.status === 'timeout' && /did not answer within/.test(x.hint)), 'health shows timeouts instead of hanging');
+  global.__hang = false; delete process.env.CHAT_FIRST_BYTE_MS; delete process.env.HEALTH_PROBE_MS; gem._reset();
+  console.log('ok  slow or stuck Gemini: chat retries without web search within seconds, health reports timeouts, nothing hangs');
 
   console.log('\nAll tests passed');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

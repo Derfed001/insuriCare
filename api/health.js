@@ -54,10 +54,14 @@ module.exports = async function handler(req, res) {
         if (status === 'error') return 'The request failed before reaching Google: ' + detail + ' If it mentions an invalid header value, the key has a space or line break: paste it again.';
         return '';
       };
+      const limit = parseInt(process.env.HEALTH_PROBE_MS || '15000', 10);
       const run = async (label, { search = false, stream = false } = {}) => {
+        const t0 = Date.now();
+        const ctl = new AbortController();
+        const timer = setTimeout(() => ctl.abort(), limit);
         try {
           const r = await callGemini({
-            stream,
+            stream, signal: ctl.signal,
             body: {
               contents: [{ role: 'user', parts: [{ text: 'Reply with the single word: ok' }] }],
               generationConfig: { maxOutputTokens: 256 },
@@ -68,13 +72,18 @@ module.exports = async function handler(req, res) {
           let detail = '';
           if (!r.ok) { try { detail = (JSON.parse(raw).error || {}).message || ''; } catch (_) { detail = raw; } }
           detail = String(detail).slice(0, 220);
-          return { test: label, status: r.status, ok: r.ok, ...(r.ok ? {} : { detail, hint: hint(r.status, detail) }) };
+          return { test: label, status: r.status, ok: r.ok, ms: Date.now() - t0, ...(r.ok ? {} : { detail, hint: hint(r.status, detail) }) };
         } catch (e) {
+          if (e && e.name === 'AbortError') {
+            return { test: label, status: 'timeout', ok: false, ms: Date.now() - t0, hint: `Gemini did not answer within ${Math.round(limit / 1000)} seconds. The model may be overloaded or slow. Try again in a minute; the chat falls back to answering without web search.` };
+          }
           const detail = String(e && e.message).slice(0, 200);
-          return { test: label, status: 'error', ok: false, detail, hint: hint('error', detail) };
+          return { test: label, status: 'error', ok: false, ms: Date.now() - t0, detail, hint: hint('error', detail) };
+        } finally {
+          clearTimeout(timer);
         }
       };
-      probe = [await run('answer'), await run('answer with web search', { search: true }), await run('streaming', { stream: true })];
+      probe = await Promise.all([run('answer'), run('answer with web search', { search: true }), run('streaming', { stream: true })]);
       if (probe.every(x => x.ok)) warnings.push('Deep test passed: Gemini answers normally, with web search and streaming.');
     }
   }

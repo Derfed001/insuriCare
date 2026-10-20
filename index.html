@@ -116,57 +116,40 @@
   }
   .drawer-close{position:absolute;top:24px;right:28px;background:none;border:none;color:#fff;font-size:1.8rem;cursor:pointer;}
 
-  /* ===== Hero ===== */
-  .hero{
-    position:relative;
-    background:var(--navy-deep);
-    color:#fff;
-    padding:104px 0 80px 0;
-    overflow:hidden;
+  /* ===== Hero: image first, warm and human ===== */
+  .hero{position:relative;background:#FBF6EE;color:var(--navy);padding:56px 0 44px;overflow:hidden;}
+  .hero::before{content:"";position:absolute;right:-12%;top:-30%;width:62%;height:130%;pointer-events:none;background:radial-gradient(closest-side,rgba(0,168,150,.14),transparent 70%);}
+  .hero .wrap{display:grid;grid-template-columns:1.05fr .95fr;gap:56px;align-items:center;position:relative;z-index:2;}
+  @media (max-width:900px){
+    .hero{padding:0 0 32px;}
+    .hero .wrap{grid-template-columns:1fr;gap:0;padding:0;}
+    .hero-copy{padding:26px 22px 0;}
   }
-  .hero .wrap{
-    display:grid;grid-template-columns:1.1fr 0.9fr;gap:60px;align-items:center;
-    position:relative;z-index:2;
-  }
-  @media (max-width:900px){ .hero .wrap{grid-template-columns:1fr;} }
-  .eyebrow{
-    font-family:'IBM Plex Mono',monospace;font-size:0.75rem;letter-spacing:0.14em;
-    text-transform:uppercase;color:#5fd6c4;margin-bottom:22px;display:flex;align-items:center;gap:10px;
-  }
+  .eyebrow{font-family:'IBM Plex Mono',monospace;font-size:0.75rem;letter-spacing:0.14em;text-transform:uppercase;color:#5fd6c4;margin-bottom:22px;display:flex;align-items:center;gap:10px;}
   .eyebrow::before{content:"";width:24px;height:1px;background:#5fd6c4;}
-  .hero h1{
-    font-size:clamp(2.4rem,5vw,3.6rem);
-    color:#fff;line-height:1.05;margin-bottom:22px;
-  }
-  .hero h1 em{font-style:italic;color:#5fd6c4;}
-  .hero p.lead{
-    font-size:1.08rem;color:#c3d2ea;max-width:480px;margin-bottom:34px;
-  }
-  .hero-ctas{display:flex;gap:16px;flex-wrap:wrap;margin-bottom:48px;}
-  .btn-primary{
-    background:var(--teal);color:#fff;padding:15px 26px;font-weight:600;font-size:0.95rem;
-    border-radius:6px;transition:transform .2s ease,box-shadow .2s ease,background .2s ease;
-    display:inline-flex;align-items:center;gap:9px;
-  }
+  .hero h1{font-size:clamp(2.4rem,5vw,3.8rem);color:var(--navy);line-height:1.04;margin-bottom:20px;}
+  .hero h1 em{font-style:italic;color:var(--teal-dark);}
+  .hero p.lead{font-size:1.1rem;color:#41536b;max-width:500px;margin-bottom:30px;}
+  .hero-ctas{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:38px;}
+  .btn-primary{background:var(--teal);color:#fff;padding:15px 26px;font-weight:600;font-size:0.95rem;border-radius:8px;transition:transform .2s ease,box-shadow .2s ease,background .2s ease;display:inline-flex;align-items:center;gap:9px;}
   .btn-primary:hover{background:var(--teal-dark);transform:translateY(-2px);box-shadow:0 10px 24px rgba(0,168,150,0.3);}
-  .btn-ghost{
-    border:1px solid rgba(255,255,255,0.35);color:#fff;padding:15px 26px;font-weight:600;font-size:0.95rem;
-    border-radius:6px;transition:background .2s ease,border-color .2s ease;
-  }
-  .btn-ghost:hover{background:rgba(255,255,255,0.08);border-color:#fff;}
+  .btn-ghost{border:1.5px solid var(--navy);color:var(--navy);padding:14px 24px;font-weight:600;font-size:0.95rem;border-radius:8px;transition:background .2s ease,color .2s ease;}
+  .btn-ghost:hover{background:var(--navy);color:#fff;}
+  .hero-stats{display:flex;gap:36px;border-top:1px solid rgba(10,37,64,.14);padding-top:24px;flex-wrap:wrap;}
+  .hero-stats div b{display:block;font-family:'Fraunces',serif;font-size:1.65rem;color:var(--navy);font-weight:600;}
+  .hero-stats div span{font-size:0.8rem;color:#5b6b82;}
 
-  .hero-stats{display:flex;gap:40px;border-top:1px solid rgba(255,255,255,0.15);padding-top:28px;flex-wrap:wrap;}
-  .hero-stats div b{
-    display:block;font-family:'Fraunces',serif;font-size:1.7rem;color:#fff;font-weight:600;
-  }
-  .hero-stats div span{font-size:0.8rem;color:#9db4d8;}
-
-  .shield-wrap{position:relative;display:flex;justify-content:center;align-items:center;z-index:2;}
-  .shield-wrap svg{width:100%;max-width:420px;height:auto;}
-
-  .hero-bg-line{
-    position:absolute;bottom:0;left:0;width:100%;height:140px;z-index:1;
-    background:linear-gradient(180deg, transparent, rgba(0,168,150,0.18));
+  /* the picture: drop a real photo at assets/hero/hero.jpg and it replaces the illustration */
+  .hero-photo{position:relative;margin:0;border-radius:28px;overflow:hidden;aspect-ratio:4/5;max-height:600px;width:100%;background:#F3E3CC;box-shadow:0 30px 70px rgba(10,37,64,.20);}
+  .hero-photo img{width:100%;height:100%;object-fit:cover;object-position:var(--hero-focus,50% 35%);display:block;}
+  .hero-photo.illus img{object-position:50% 50%;}
+  .hero-chip{position:absolute;left:16px;top:16px;right:16px;max-width:300px;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);color:var(--navy);border-radius:14px;padding:12px 14px;font-size:.88rem;font-weight:600;box-shadow:0 10px 30px rgba(10,37,64,.18);}
+  .hero-chip i{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;}
+  @media (max-width:900px){
+    .hero-photo{order:-1;border-radius:0 0 26px 26px;aspect-ratio:4/3.3;max-height:none;box-shadow:none;}
+    .hero-photo.illus img{object-position:50% 66%;}
+    .hero-chip{display:none;}
+    .hero::before{display:none;}
   }
 
   /* ===== Marquee partner strip ===== */
@@ -420,48 +403,52 @@
   .dd-menu b{display:block;font-size:0.92rem;color:var(--navy);}
   .dd-menu span{display:block;font-size:0.8rem;color:var(--muted);margin-top:2px;font-weight:400;}
 
-  /* ===== Hero: video slot, drifting light, office-hours countdown ===== */
-  .hero-video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.3;z-index:0;}
-  .hero::before{
-    content:"";position:absolute;inset:-25%;z-index:0;pointer-events:none;
-    background:
-      radial-gradient(40% 40% at 20% 30%, rgba(0,168,150,.20), transparent 70%),
-      radial-gradient(35% 35% at 80% 20%, rgba(46,144,250,.18), transparent 70%),
-      radial-gradient(40% 40% at 60% 85%, rgba(0,168,150,.12), transparent 70%);
-    animation:drift 20s ease-in-out infinite alternate;
-  }
-  @keyframes drift{from{transform:translate3d(-3%,-2%,0) scale(1);}to{transform:translate3d(3%,2%,0) scale(1.08);}}
-  .hero .wrap.status-wrap{display:block;margin-top:52px;}
-  .status-card{
-    display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;
-    background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.16);border-radius:14px;
-    padding:20px 24px;backdrop-filter:blur(6px);
-  }
+  /* ===== Office-hours card (light) ===== */
+  .hero .wrap.status-wrap{display:block;margin-top:44px;}
+  @media (max-width:900px){ .hero .wrap.status-wrap{padding:0 22px;margin-top:28px;} }
+  .status-card{display:flex;align-items:center;justify-content:space-between;gap:24px;flex-wrap:wrap;background:#fff;border:1px solid var(--line);border-radius:16px;padding:18px 22px;box-shadow:0 10px 30px rgba(10,37,64,.06);}
   .status-info{display:flex;align-items:center;gap:14px;min-width:220px;}
-  .status-info .dot{width:12px;height:12px;border-radius:50%;background:#94a3b8;flex-shrink:0;box-shadow:0 0 0 0 rgba(16,185,129,.6);}
+  .status-info .dot{width:12px;height:12px;border-radius:50%;background:#94a3b8;flex-shrink:0;}
   .status-info .dot.open{background:var(--success);animation:pulse 2s infinite;}
   @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(16,185,129,.55);}70%{box-shadow:0 0 0 10px rgba(16,185,129,0);}100%{box-shadow:0 0 0 0 rgba(16,185,129,0);}}
-  .status-info b{display:block;color:#fff;font-size:1rem;}
-  .status-info span{display:block;color:#9db4d8;font-size:.82rem;margin-top:2px;}
+  .status-info b{display:block;color:var(--navy);font-size:1rem;}
+  .status-info span{display:block;color:var(--muted);font-size:.82rem;margin-top:2px;}
   .cd{display:flex;gap:10px;}
-  .cd div{min-width:68px;text-align:center;background:rgba(7,26,47,.55);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:10px 6px;}
-  .cd b{display:block;font-family:'IBM Plex Mono',monospace;font-size:1.5rem;color:#fff;font-weight:500;line-height:1.1;}
-  .cd span{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:#9db4d8;}
+  .cd div{min-width:68px;text-align:center;background:var(--mist);border:1px solid var(--line);border-radius:10px;padding:10px 6px;}
+  .cd b{display:block;font-family:'IBM Plex Mono',monospace;font-size:1.5rem;color:var(--navy);font-weight:500;line-height:1.1;}
+  .cd span{font-size:.68rem;letter-spacing:.1em;text-transform:uppercase;color:var(--muted);}
   .status-actions{display:flex;gap:10px;flex-wrap:wrap;}
-  .status-actions a{
-    display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:8px;font-weight:600;font-size:.88rem;
-    border:1px solid rgba(255,255,255,.3);color:#fff;transition:background .2s ease;
-  }
-  .status-actions a:hover{background:rgba(255,255,255,.1);}
-  .status-actions a.solid{background:var(--teal);border-color:var(--teal);}
+  .status-actions a{display:inline-flex;align-items:center;gap:8px;padding:11px 16px;border-radius:8px;font-weight:600;font-size:.88rem;border:1px solid var(--line);color:var(--navy);transition:background .2s ease;}
+  .status-actions a:hover{background:var(--mist);}
+  .status-actions a.solid{background:var(--teal);border-color:var(--teal);color:#fff;}
   .status-actions a.solid:hover{background:var(--teal-dark);}
   @media (max-width:640px){
-    .status-card{padding:18px;}
+    .status-card{padding:16px;}
     .cd{width:100%;}
     .cd div{flex:1;min-width:0;}
     .status-actions{width:100%;}
     .status-actions a{flex:1;justify-content:center;}
   }
+
+  /* ===== Life moments (photo slots with illustrated fallbacks) ===== */
+  .moments{background:#fff;}
+  .moment-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:22px;}
+  @media (max-width:960px){ .moment-grid{grid-template-columns:repeat(2,1fr);} }
+  @media (max-width:560px){ .moment-grid{grid-template-columns:1fr;} }
+  .moment-card{background:#fff;border:1px solid var(--line);border-radius:18px;overflow:hidden;display:flex;flex-direction:column;transition:transform .25s ease,box-shadow .25s ease;}
+  .moment-card:hover{transform:translateY(-5px);box-shadow:0 22px 44px rgba(10,37,64,.12);}
+  .moment-ph{aspect-ratio:4/3;background-repeat:no-repeat;background-position:center;}
+  .moment-body{padding:20px 22px 22px;display:flex;flex-direction:column;flex:1;}
+  .moment-body h3{font-size:1.15rem;margin-bottom:6px;}
+  .moment-body p{color:var(--muted);font-size:.92rem;margin-bottom:16px;flex:1;}
+  .moment-link{font-weight:600;font-size:.9rem;color:var(--teal-dark);text-decoration:none;}
+  .moment-link:hover{text-decoration:underline;text-underline-offset:3px;}
+  .m-family{background-image:url('assets/moments/family.jpg'),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2%22/%3E%3Ccircle cx=%229%22 cy=%227%22 r=%224%22/%3E%3Cpath d=%22M23 21v-2a4 4 0 0 0-3-3.9%22/%3E%3Cpath d=%22M16 3.1a4 4 0 0 1 0 7.8%22/%3E%3C/svg%3E"),linear-gradient(135deg,#0A2540,#1f6f9e);background-size:cover,72px 72px,cover;}
+  .m-school{background-image:url('assets/moments/school.jpg'),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M22 10L12 5 2 10l10 5 10-5z%22/%3E%3Cpath d=%22M6 12v5c3 2 9 2 12 0v-5%22/%3E%3C/svg%3E"),linear-gradient(135deg,#00897A,#2bb5a3);background-size:cover,72px 72px,cover;}
+  .m-car{background-image:url('assets/moments/car.jpg'),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M3 13l2-6a2 2 0 0 1 2-1.5h10A2 2 0 0 1 19 7l2 6v4a1 1 0 0 1-1 1h-1a1 1 0 0 1-1-1v-1H6v1a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1z%22/%3E%3Ccircle cx=%227.5%22 cy=%2214%22 r=%221%22/%3E%3Ccircle cx=%2216.5%22 cy=%2214%22 r=%221%22/%3E%3C/svg%3E"),linear-gradient(135deg,#b45309,#f59e0b);background-size:cover,72px 72px,cover;}
+  .m-business{background-image:url('assets/moments/business.jpg'),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Crect x=%222%22 y=%227%22 width=%2220%22 height=%2214%22 rx=%222%22/%3E%3Cpath d=%22M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16%22/%3E%3C/svg%3E"),linear-gradient(135deg,#334155,#64748b);background-size:cover,72px 72px,cover;}
+  .m-retire{background-image:url('assets/moments/retire.jpg'),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Ccircle cx=%2212%22 cy=%2212%22 r=%224%22/%3E%3Cpath d=%22M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4%22/%3E%3C/svg%3E"),linear-gradient(135deg,#9a3412,#fb923c);background-size:cover,72px 72px,cover;}
+  .m-travel{background-image:url('assets/moments/travel.jpg'),url("data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22white%22 stroke-width=%221.5%22 stroke-linecap=%22round%22 stroke-linejoin=%22round%22%3E%3Cpath d=%22M17.8 19.2L16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z%22/%3E%3C/svg%3E"),linear-gradient(135deg,#0e7490,#22d3ee);background-size:cover,72px 72px,cover;}
 
   /* ===== Scroll reveal ===== */
   .reveal{opacity:0;transform:translateY(18px);transition:opacity .6s ease,transform .6s ease;}
@@ -717,13 +704,10 @@
 <!-- ===== HERO ===== -->
 <span id="main"></span>
 <section class="hero">
-  <video class="hero-video" autoplay muted loop playsinline preload="none" aria-hidden="true" tabindex="-1">
-    <source src="assets/hero.mp4" type="video/mp4" onerror="this.parentElement.remove()">
-  </video>
   <div class="wrap">
-    <div>
-      <h1>Cover that holds<br>when life <em>doesn't.</em></h1>
-      <p class="lead">InsuriCare Insurance Agency arranges personal and group cover across Kenya's leading insurers — one relationship, every policy, no guesswork.</p>
+    <div class="hero-copy">
+      <h1>Protect the people<br>you <em>love.</em></h1>
+      <p class="lead">Life, medical, car and business insurance for Kenyan families, arranged with trusted insurers and looked after by us from quote to claim.</p>
       <div class="hero-ctas">
         <a href="https://wa.me/254115129088?text=Hi%20InsuriCare%2C%20I%27d%20like%20a%20quote." target="_blank" rel="noopener" class="btn-primary">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M17.4 14.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.47-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.14-.14.3-.35.45-.53.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.6-.92-2.2-.24-.58-.49-.5-.67-.5-.17-.01-.37-.01-.57-.01s-.52.07-.8.37c-.27.3-1.04 1.02-1.04 2.47s1.07 2.87 1.22 3.07c.15.2 2.1 3.2 5.08 4.49.71.31 1.26.49 1.7.62.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2-1.42.25-.7.25-1.29.17-1.42-.07-.12-.27-.2-.57-.35z" fill="#fff"/></svg>
@@ -737,30 +721,11 @@
         <div><b>2</b><span>Lines of cover: Personal &amp; Group</span></div>
       </div>
     </div>
-    <div class="shield-wrap">
-      <svg viewBox="0 0 400 460" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <clipPath id="shieldClip"><path d="M200 10L370 68V220C370 320 300 400 200 450C100 400 30 320 30 220V68L200 10Z"/></clipPath>
-        </defs>
-        <path d="M200 10L370 68V220C370 320 300 400 200 450C100 400 30 320 30 220V68L200 10Z" fill="none" stroke="#3a5c96" stroke-width="1.5"/>
-        <g clip-path="url(#shieldClip)">
-          <rect x="30" y="10" width="170" height="450" fill="#0F2A46"/>
-          <rect x="200" y="10" width="170" height="450" fill="#071A2F"/>
-          <line x1="200" y1="10" x2="200" y2="450" stroke="#00A896" stroke-width="2"/>
-          <g stroke="#5fd6c4" stroke-width="1" opacity="0.35">
-            <line x1="30" y1="120" x2="200" y2="120"/>
-            <line x1="30" y1="220" x2="200" y2="220"/>
-            <line x1="30" y1="320" x2="200" y2="320"/>
-            <line x1="200" y1="150" x2="370" y2="150"/>
-            <line x1="200" y1="260" x2="370" y2="260"/>
-          </g>
-        </g>
-        <text x="60" y="90" fill="#5fd6c4" font-family="IBM Plex Mono, monospace" font-size="12" letter-spacing="2">PERSONAL</text>
-        <text x="240" y="90" fill="#c9d4e6" font-family="IBM Plex Mono, monospace" font-size="12" letter-spacing="2">GROUP</text>
-        <circle cx="200" cy="230" r="34" fill="#0A2540" stroke="#00A896" stroke-width="1.5"/>
-        <path d="M188 230L197 239L214 218" stroke="#ffffff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
-      </svg>
-    </div>
+    <figure class="hero-photo" id="heroPhoto">
+      <img src="assets/hero/hero.jpg" alt="A family together, sheltered and protected" width="800" height="1000" fetchpriority="high"
+           onerror="this.onerror=null;this.src='assets/hero/hero-illustration.svg';this.parentElement.classList.add('illus')">
+      <figcaption class="hero-chip"><i aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></i>Life, medical, car and business cover</figcaption>
+    </figure>
   </div>
   <div class="wrap status-wrap">
     <div class="status-card">
@@ -780,8 +745,7 @@
       </div>
     </div>
   </div>
-  <div class="hero-bg-line"></div>
-</section>
+  </section>
 
 <div class="partner-strip">
   <div class="track">
@@ -808,6 +772,67 @@
     <img src="assets/partners/definite.jpg" alt="" aria-hidden="true">
   </div>
 </div>
+
+<!-- ===== LIFE MOMENTS ===== -->
+<section class="moments" id="moments">
+  <div class="wrap">
+    <div class="sec-head">
+      <div class="eyebrow">Real life, real cover</div>
+      <h2>Start with where you are in life</h2>
+      <p>Insurance is peace of mind for the moments that matter. Tell us what is happening in your life and we will point you to the right cover.</p>
+    </div>
+    <div class="moment-grid">
+      <article class="moment-card">
+        <div class="moment-ph m-family" role="img" aria-label="Starting a family"></div>
+        <div class="moment-body">
+          <h3>Starting a family</h3>
+          <p>Life and medical cover so your loved ones are looked after, whatever happens.</p>
+          <a href="#contact" class="moment-link" data-quote="Life Insurance">Cover my family &rarr;</a>
+        </div>
+      </article>
+      <article class="moment-card">
+        <div class="moment-ph m-school" role="img" aria-label="Educating your children"></div>
+        <div class="moment-body">
+          <h3>Educating your children</h3>
+          <p>Education and savings plans that keep school fees on track.</p>
+          <a href="#contact" class="moment-link" data-quote="Education Plan">Plan for school fees &rarr;</a>
+        </div>
+      </article>
+      <article class="moment-card">
+        <div class="moment-ph m-car" role="img" aria-label="Buying a car"></div>
+        <div class="moment-body">
+          <h3>Buying a car</h3>
+          <p>Motor cover for your car, and for the people and property around it.</p>
+          <a href="#contact" class="moment-link" data-quote="Car Insurance">Insure my car &rarr;</a>
+        </div>
+      </article>
+      <article class="moment-card">
+        <div class="moment-ph m-business" role="img" aria-label="Growing a business"></div>
+        <div class="moment-body">
+          <h3>Growing a business</h3>
+          <p>WIBA, staff medical, and cover for your premises and stock.</p>
+          <a href="#contact" class="moment-link" data-quote="Corporate Medical Cover">Cover my business &rarr;</a>
+        </div>
+      </article>
+      <article class="moment-card">
+        <div class="moment-ph m-retire" role="img" aria-label="Planning for retirement"></div>
+        <div class="moment-body">
+          <h3>Planning for retirement</h3>
+          <p>Pension and savings plans that keep working for you in the years ahead.</p>
+          <a href="#contact" class="moment-link" data-quote="Retirement Planning / Pension">Plan my retirement &rarr;</a>
+        </div>
+      </article>
+      <article class="moment-card">
+        <div class="moment-ph m-travel" role="img" aria-label="Travelling abroad"></div>
+        <div class="moment-body">
+          <h3>Travelling abroad</h3>
+          <p>Travel cover for medical costs and trip problems away from home.</p>
+          <a href="#contact" class="moment-link" data-quote="Travel Insurance">Cover my trip &rarr;</a>
+        </div>
+      </article>
+    </div>
+  </div>
+</section>
 
 <!-- ===== COVERAGE ===== -->
 <section class="coverage" id="coverage">
@@ -1215,6 +1240,8 @@
             <option>Car Insurance</option>
             <option>Travel Insurance</option>
             <option>Investment / Savings Plan</option>
+            <option>Education Plan</option>
+            <option>Retirement Planning / Pension</option>
             <option>Corporate Medical Cover</option>
             <option>Group Life / Pension</option>
             <option>WIBA</option>
@@ -1548,7 +1575,7 @@
 
     // Scroll reveal
     if (!reduce && 'IntersectionObserver' in window){
-      const els = $$('.sec-head, .plan-card, .team-card, .res-card, .corp-inner, .step, .why-card, .faq-item');
+      const els = $$('.sec-head, .plan-card, .moment-card, .team-card, .res-card, .corp-inner, .step, .why-card, .faq-item');
       const io = new IntersectionObserver((entries) => entries.forEach(e => { if (e.isIntersecting || e.boundingClientRect.top < 0){ e.target.classList.add('in'); io.unobserve(e.target); } }), { threshold:0.12, rootMargin:'0px 0px -6% 0px' });
       els.forEach(el => { el.classList.add('reveal'); io.observe(el); });
     }
