@@ -5,8 +5,12 @@
 const DEFAULT_MODELS = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash'];
 const dead = new Set();
 
+/** Values pasted into Vercel often carry an invisible trailing space or line break, which makes the request fail. */
+const clean = v => String(v || '').trim();
+const apiKey = () => clean(process.env.GEMINI_API_KEY);
+
 function modelList() {
-  const all = [...new Set([process.env.CHAT_MODEL, process.env.GEMINI_MODEL, ...DEFAULT_MODELS].filter(Boolean))];
+  const all = [...new Set([clean(process.env.CHAT_MODEL), clean(process.env.GEMINI_MODEL), ...DEFAULT_MODELS].filter(Boolean))];
   const live = all.filter(m => !dead.has(m));
   if (live.length) return live;
   dead.clear();
@@ -20,7 +24,7 @@ async function callGemini({ body, stream = false, signal }) {
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(m)}:${stream ? 'streamGenerateContent?alt=sse' : 'generateContent'}`;
     const r = await fetch(url, {
       method: 'POST', signal,
-      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': process.env.GEMINI_API_KEY },
+      headers: { 'Content-Type': 'application/json', 'x-goog-api-key': apiKey() },
       body: JSON.stringify(body)
     });
     if (r.status !== 404) return r;
@@ -40,4 +44,4 @@ async function logFailure(r, where) {
 
 function _reset() { dead.clear(); }
 
-module.exports = { callGemini, logFailure, modelList, _reset };
+module.exports = { callGemini, logFailure, modelList, apiKey, _reset };

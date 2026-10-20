@@ -4,7 +4,7 @@ const GRAPH = () => `https://graph.facebook.com/${process.env.WA_GRAPH_VERSION |
 async function waPost(body) {
   const r = await fetch(`${GRAPH()}/${process.env.WA_PHONE_NUMBER_ID}/messages`, {
     method: 'POST',
-    headers: { Authorization: `Bearer ${process.env.WA_TOKEN}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${String(process.env.WA_TOKEN || '').trim()}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ messaging_product: 'whatsapp', ...body })
   });
   if (!r.ok) throw new Error(`whatsapp ${r.status} ${(await r.text()).slice(0, 200)}`);
@@ -31,10 +31,10 @@ function sendTemplate(to, name, text) {
 }
 
 async function downloadMedia(mediaId) {
-  const meta = await fetch(`${GRAPH()}/${mediaId}`, { headers: { Authorization: `Bearer ${process.env.WA_TOKEN}` } });
+  const meta = await fetch(`${GRAPH()}/${mediaId}`, { headers: { Authorization: `Bearer ${String(process.env.WA_TOKEN || '').trim()}` } });
   if (!meta.ok) throw new Error('media meta ' + meta.status);
   const { url, mime_type } = await meta.json();
-  const file = await fetch(url, { headers: { Authorization: `Bearer ${process.env.WA_TOKEN}` } });
+  const file = await fetch(url, { headers: { Authorization: `Bearer ${String(process.env.WA_TOKEN || '').trim()}` } });
   if (!file.ok) throw new Error('media download ' + file.status);
   return { mime: mime_type, base64: Buffer.from(await file.arrayBuffer()).toString('base64') };
 }

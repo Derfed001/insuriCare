@@ -47,7 +47,7 @@ The assistant answers clients in your formal **client-mode** style (greeting by 
 3. Save as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ### 2. The assistant brain (choose one)
-- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health`: it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
+- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health` (add `?test=1` for a deeper test that really asks Gemini for an answer, with and without web search, and shows Google's reason if it fails): it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
 - **Your own voice/text agent:** host it anywhere with a stable HTTPS endpoint (a Colab notebook link is not an endpoint) and set `ASSISTANT_URL`. If `GEMINI_API_KEY` is also set, Gemini answers whenever your agent is offline (+ optional `ASSISTANT_TOKEN`). The site sends:
   ```json
   { "channel": "whatsapp", "phone": "2547...", "name": "Jane", "text": "…",
@@ -94,6 +94,9 @@ Run the offline tests any time with `npm test` (no accounts needed).
 - **Search grounding is billed by Google** after a free allowance and the allowance can change. Check your plan in AI Studio and keep an eye on usage in the first weeks.
 - **Privacy:** chats are not stored by the site. Visitor messages go to Google (Gemini) to be answered, and the chat window warns visitors not to share ID numbers, passwords or PINs. Check Google's current terms for the free tier before real clients use it, and consider enabling billing. Add a short privacy notice to the site.
 - **Accuracy:** web pages can be out of date or wrong. The bot shows its sources so visitors can check, and says when it is unsure, but review its answers yourself in the first weeks.
+
+## Forward your own phone to the assistant
+When your phone is busy, not answered or unreachable, calls can go to Makokha on your Africa's Talking voice number, and you get an SMS summary. Setup, the dial codes and a test checklist are in `docs/CALL_FORWARDING.md` (set `CALL_FORWARDED=1`, `OWNER_NAME`, `AT_VOICE_NUMBER`).
 
 ## Africa's Talking setup (SMS and calls)
 1. Create an account at africastalking.com and an app. Note the **username** and generate an **API key**.

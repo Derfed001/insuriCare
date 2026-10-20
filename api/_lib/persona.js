@@ -38,8 +38,12 @@ const SMS_STYLE = `ON SMS
 - Sign off with "Regards" only when closing the conversation.`;
 
 /** What the phone menu says before the caller reaches the assistant. */
-function callGreeting(nowMs = Date.now()) {
-  return `${greetingEAT(nowMs)}, you have reached InsuriCare Insurance Agency. I am Makokha, the agency's virtual assistant.`;
+function callGreeting(nowMs = Date.now(), { forwarded = false, ownerName = '' } = {}) {
+  const g = greetingEAT(nowMs);
+  if (!forwarded) return `${g}, you have reached InsuriCare Insurance Agency. I am Makokha, the agency's virtual assistant. This call is recorded.`;
+  const line = ownerName ? `${ownerName}'s line at InsuriCare Insurance Agency` : 'InsuriCare Insurance Agency';
+  const away = ownerName ? `${ownerName} is not available to take your call right now.` : 'The team is not available to take your call right now.';
+  return `${g}, you have reached ${line}. ${away} I am Makokha, the agency's virtual assistant, and I can help or take a message. This call is recorded.`;
 }
 
 function buildStyle({ channel = 'whatsapp', firstMessage = true, nowMs = Date.now() } = {}) {

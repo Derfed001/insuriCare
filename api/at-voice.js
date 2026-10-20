@@ -19,6 +19,10 @@ const { secretOk, parseBody } = require('./_lib/at');
 const { isOpenEAT } = require('./_lib/hours');
 
 const MAX_TURNS = 4;
+const forwardedMode = () => ['1', 'true', 'yes'].includes(String(process.env.CALL_FORWARDED || '').toLowerCase());
+const ownerName = () => String(process.env.OWNER_NAME || '').trim();
+const greet = () => callGreeting(Date.now(), { forwarded: forwardedMode(), ownerName: ownerName() });
+const digits = s => String(s || '').replace(/\D/g, '');
 const esc = s => String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 /** Make text safe to read aloud: no emoji, markdown, links; bounded length. */
@@ -48,11 +52,20 @@ const GOODBYE = 'Thank you for calling InsuriCare. Goodbye.';
 const SILENT = 'We did not hear anything. Please call again, or send us a WhatsApp message on +254 115 129 088. Goodbye.';
 
 function menu(req) {
+  const zero = forwardedMode() ? '' : ' Press 0 to speak to a team member.';
   return xml(
     `<GetDigits timeout="8" numDigits="1" callbackUrl="${esc(cb(req, 'menu'))}">` +
-      say(`${callGreeting()} Press 1 to speak with me. Press 2 to report a claim or an emergency. Press 3 to request a call back. Press 0 to speak to a team member.`) +
+      say(`${greet()} Press 1 to speak with me. Press 2 to report a claim or an emergency. Press 3 to request a call back.${zero}`) +
     '</GetDigits>' +
     say('We did not receive your selection. Please call again, or send us a WhatsApp message. Goodbye.')
+  );
+}
+
+/** Forwarded calls (owner busy or unreachable): no menu, the assistant answers straight away. */
+function forwardedStart(req) {
+  return xml(
+    say(`${greet()} Please tell me your name and how I can help after the beep, then press the hash key.`) +
+    record(req, 'assist', '&turn=1') + say(SILENT)
   );
 }
 
@@ -82,12 +95,34 @@ async function handler(req, res) {
   const session = b.sessionId || caller;
   const who = caller ? `+${caller}` : 'unknown number';
 
-  if (String(b.isActive) === '0') return res.status(200).send(xml('')); // call ended
+  // A call that comes from our own voice number is the carrier forwarding an unanswered transfer back to us. Reject it so it cannot loop.
+  const self = digits(process.env.AT_VOICE_NUMBER);
+  const dest = digits(b.destinationNumber);
+  if (caller && ((self && digits(caller) === self) || (dest && digits(caller) === dest))) {
+    return res.status(200).send(xml('<Reject/>'));
+  }
+
+  // Call ended: text the owner what the assistant handled (unless they were already alerted about this call).
+  if (String(b.isActive) === '0') {
+    if (forwardedMode() && process.env.FORWARD_SUMMARY !== '0' && session && !(await store.get(`va:${session}`))) {
+      const hist = (await store.get(`vs:${session}`)) || [];
+      const said = hist.filter(h => h.role === 'user').map(h => h.text).filter(Boolean).join(' / ').slice(0, 220);
+      await store.set(`va:${session}`, 1, 3600);
+      try {
+        await alertOwner({
+          urgency: 'normal',
+          title: said ? `Makokha handled a call from ${who}` : `Missed call from ${who} (no message left)`,
+          lines: [said ? `Heard: ${said}` : null, `Call back: tel:${who}`]
+        });
+      } catch (e) { console.error('call summary failed:', e.message); }
+    }
+    return res.status(200).send(xml('')); // call ended
+  }
   if (/outbound/i.test(b.direction || '')) return res.status(200).send(xml(''));
 
   try {
-    // ---- entry: greeting + menu ----
-    if (step === 'start') return res.status(200).send(menu(req));
+    // ---- entry: greeting (menu, or straight to the assistant when calls are forwarded) ----
+    if (step === 'start') return res.status(200).send(forwardedMode() ? forwardedStart(req) : menu(req));
 
     // ---- menu choice ----
     if (step === 'menu') {
@@ -106,14 +141,14 @@ async function handler(req, res) {
           say('After the beep, please say your name and what you need, and the best time to call you. Then press the hash key.') +
           record(req, 'message', '&kind=callback', 45) + say(SILENT)));
       }
-      if (d === '0') {
+      if (d === '0' && !forwardedMode()) {
         if (process.env.OWNER_PHONE && isOpenEAT()) {
           const callerId = process.env.AT_VOICE_NUMBER ? ` callerId="${esc(process.env.AT_VOICE_NUMBER)}"` : '';
           return res.status(200).send(xml(
             say('Please hold while I connect you to a team member.') +
             `<Dial phoneNumbers="${esc(process.env.OWNER_PHONE)}"${callerId} record="true" maxDuration="900"/>` +
-            say('We could not reach a team member. After the beep, please leave your name and what you need, then press the hash key.') +
-            record(req, 'message', '&kind=callback', 45) + say(SILENT)));
+            say('We could not reach a team member. I am Makokha, the virtual assistant. After the beep, please tell me your name and how I can help, then press the hash key.') +
+            record(req, 'assist', '&turn=1') + say(SILENT)));
         }
         return res.status(200).send(xml(
           say('Our office is closed right now. After the beep, please leave your name and what you need, and a team member will call you back. Press the hash key when you are done.') +
@@ -136,6 +171,7 @@ async function handler(req, res) {
       const speech = result.audio_url ? play(result.audio_url) : say(result.reply);
 
       if (result.escalate) {
+        await store.set(`va:${session}`, 1, 3600);
         await alertOwner({
           urgency: result.urgency,
           title: `Caller ${who} needs you`,
@@ -160,6 +196,7 @@ async function handler(req, res) {
       const kind = req.query?.kind === 'claim' ? 'claim' : 'callback';
       const audio = await fetchRecording(b.recordingUrl);
       const brief = await voicemailBrief(audio);
+      await store.set(`va:${session}`, 1, 3600);
       await alertOwner({
         urgency: kind === 'claim' ? 'urgent' : 'high',
         title: kind === 'claim' ? `Claim or emergency call from ${who}` : `Call-back request from ${who}`,

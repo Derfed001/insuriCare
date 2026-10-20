@@ -6,11 +6,11 @@ const atConfigured = () => !!(process.env.AT_USERNAME && process.env.AT_API_KEY)
 
 /** Send an SMS. `to` is digits-only international format (2547...). */
 async function sendSms(to, message) {
-  const form = new URLSearchParams({ username: process.env.AT_USERNAME, to: '+' + to, message: String(message).slice(0, 459) });
+  const form = new URLSearchParams({ username: String(process.env.AT_USERNAME || '').trim(), to: '+' + to, message: String(message).slice(0, 459) });
   if (process.env.AT_SMS_FROM) form.set('from', process.env.AT_SMS_FROM);
   const r = await fetch(`${base()}/version1/messaging`, {
     method: 'POST',
-    headers: { apiKey: process.env.AT_API_KEY, Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: { apiKey: String(process.env.AT_API_KEY || '').trim(), Accept: 'application/json', 'Content-Type': 'application/x-www-form-urlencoded' },
     body: form.toString()
   });
   if (!r.ok) throw new Error(`africastalking sms ${r.status} ${(await r.text()).slice(0, 200)}`);
@@ -22,7 +22,7 @@ async function sendSms(to, message) {
 
 /** Callbacks carry a shared secret in the URL (?key=...). Constant-time compare. */
 function secretOk(provided) {
-  const secret = process.env.AT_WEBHOOK_SECRET;
+  const secret = String(process.env.AT_WEBHOOK_SECRET || '').trim();
   if (!secret || !provided) return false;
   const a = Buffer.from(String(provided)), b = Buffer.from(secret);
   return a.length === b.length && crypto.timingSafeEqual(a, b);

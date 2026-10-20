@@ -484,5 +484,68 @@ const reset = () => { calls = []; store._reset(); geminiDown = false; };
   delete process.env.atsk_fakekey123; global.__deadModels = []; gem._reset();
   console.log('ok  health check: reports settings and Gemini status, spots a key typed into the name box, shows no secrets');
 
+  // ================= Forwarded calls: owner busy / unreachable =================
+  process.env.CALL_FORWARDED = '1'; process.env.OWNER_NAME = 'Derrick'; process.env.AT_VOICE_NUMBER = '+254711000000';
+  reset();
+  res = await v(vReq('start'));
+  assert.ok(!res.body.includes('<GetDigits') && res.body.includes('<Record') && res.body.includes('step=assist&amp;turn=1'), 'no menu: the assistant answers straight away');
+  assert.ok(res.body.includes("Derrick") && res.body.includes('not available') && res.body.includes('virtual assistant'), 'says who is away and that it is an AI');
+  res = await v(vReq('menu', { dtmfDigits: '0' }));
+  assert.ok(!res.body.includes('<Dial'), 'no transfer to the owner in forwarded mode (it would ring the phone that forwards back)');
+  res = await v(vReq('start', { callerNumber: '+254711000000' }));
+  assert.ok(res.body.includes('<Reject/>'), 'a call coming from our own voice number is rejected, so forwarding cannot loop');
+  console.log('ok  forwarded calls: assistant answers straight away, says it is an AI, no transfer, loops rejected');
+
+  // summary after the call: handled calls and missed calls are reported once, escalated calls are not reported twice
+  reset();
+  geminiReply = { reply: 'Life cover pays your family if you pass away. Who would you like to cover?', escalate: false, urgency: 'normal', reason: '', heard: 'I want life cover for my family' };
+  await v(vReq('assist', { recordingUrl: 'https://rec.example/f1.wav', sessionId: 'S9' }, { turn: '1' }));
+  assert.strictEqual(telegram().length, 0, 'a routine call does not interrupt you mid-call');
+  await v(vReq('start', { isActive: '0', sessionId: 'S9' }));
+  assert.strictEqual(telegram().length, 1);
+  assert.ok(telegram()[0].body.text.startsWith('[FYI]') && telegram()[0].body.text.includes('handled a call') && telegram()[0].body.text.includes('life cover'));
+  await v(vReq('start', { isActive: '0', sessionId: 'S9' }));
+  assert.strictEqual(telegram().length, 1, 'no duplicate summary');
+  await v(vReq('start', { isActive: '0', sessionId: 'S10' }));
+  assert.strictEqual(telegram().length, 2);
+  assert.ok(telegram()[1].body.text.includes('Missed call from +254712345678'));
+  geminiReply = { reply: 'A team member will call you.', escalate: true, urgency: 'urgent', reason: 'Accident', heard: 'I had an accident' };
+  await v(vReq('assist', { recordingUrl: 'https://rec.example/f2.wav', sessionId: 'S11' }, { turn: '1' }));
+  assert.strictEqual(telegram().length, 3);
+  await v(vReq('start', { isActive: '0', sessionId: 'S11' }));
+  assert.strictEqual(telegram().length, 3, 'urgent calls are not reported a second time');
+  process.env.FORWARD_SUMMARY = '0';
+  await v(vReq('start', { isActive: '0', sessionId: 'S12' }));
+  assert.strictEqual(telegram().length, 3, 'summaries can be switched off');
+  delete process.env.FORWARD_SUMMARY;
+  delete process.env.CALL_FORWARDED; delete process.env.OWNER_NAME; delete process.env.AT_VOICE_NUMBER;
+  console.log('ok  forwarded calls: you get one short summary per handled or missed call, urgent ones are not repeated');
+
+  // ================= Secrets pasted with a stray space or line break =================
+  reset(); gem._reset();
+  const keyBefore = process.env.GEMINI_API_KEY;
+  process.env.GEMINI_API_KEY = 'goodkey\n ';
+  global.__chatChunks = [sseChunk('Works even though the pasted key had a trailing line break.')];
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'hello' }], '12.12.12.1'), res);
+  assert.ok(events(res).some(e => e.t === 'text' && e.v.includes('Works even though')));
+  const sentKey = calls.find(c => c.url.includes('streamGenerateContent')).headers['x-goog-api-key'];
+  assert.strictEqual(sentKey, 'goodkey', 'the key is trimmed before it is sent');
+  console.log('ok  a key pasted with a trailing space or line break still works');
+
+  // deep health test: shows Google's real status and a plain-English hint
+  reset(); gem._reset(); global.__chatChunks = [sseChunk('ok')];
+  res = mkRes(); res.setHeader = () => {}; await health({ headers: { 'x-forwarded-for': '12.12.12.2' }, query: { test: '1' } }, res);
+  let dj = JSON.parse(res.body);
+  assert.strictEqual(dj.probe.length, 3); assert.ok(dj.probe.every(x => x.ok && x.status === 200));
+  assert.ok(dj.warnings.some(w => /Deep test passed/.test(w)));
+  global.__chatFail = 429; gem._reset();
+  res = mkRes(); res.setHeader = () => {}; await health({ headers: { 'x-forwarded-for': '12.12.12.3' }, query: { test: '1' } }, res);
+  dj = JSON.parse(res.body);
+  const st = dj.probe.find(x => x.test === 'streaming');
+  assert.strictEqual(st.status, 429); assert.ok(/Quota or rate limit/.test(st.hint));
+  assert.ok(!JSON.stringify(dj).includes('goodkey'));
+  global.__chatFail = 0; process.env.GEMINI_API_KEY = keyBefore; gem._reset();
+  console.log('ok  health ?test=1: runs a real answer, search and streaming check, explains failures, never shows the key');
+
   console.log('\nAll tests passed');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });
