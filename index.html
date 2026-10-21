@@ -1639,7 +1639,7 @@
       if (window.matchMedia('(max-width:600px)').matches) document.body.classList.add('chat-lock');
       if (!started){
         started = true;
-        addMsg('bot', md(greeting() + '. I am Makokha, InsuriCare\u2019s virtual assistant (an AI). Tell me what you want to cover, or what you need help with, and I will explain your options in plain language. I can search our website and the web to compare insurers.'));
+        addMsg('bot', md(greeting() + '. I am Makokha, InsuriCare\u2019s virtual assistant (an AI). Tell me what you want to cover, or what you need help with, and I will explain your options in plain language. I answer from our website and, where I can, from the latest information on the web.'));
         showChips();
       }
       setTimeout(() => input.focus(), 220);

@@ -44,6 +44,17 @@ global.fetch = async (url, opts = {}) => {
   if (global.__hang && /enerateContent/.test(String(url)) && (global.__hang === 'all' || (body && body.tools))) {
     return new Promise((_, rej) => opts.signal && opts.signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
   }
+  if (global.__noSearch && body && body.tools && /streamGenerateContent/.test(String(url))) {
+    global.__chatCalls = (global.__chatCalls || []).concat([{ url: String(url), body }]);
+    return { ok: false, status: 429, body: null, text: async () => '{"error":{"code":429,"message":"You exceeded your current quota"}}' };
+  }
+  if (String(url).includes('streamGenerateContent') && global.__crlf) {
+    // real Gemini frames events with \r\n\r\n; send it in awkward 11-byte slices, with no blank line after the last event
+    global.__chatCalls = (global.__chatCalls || []).concat([{ url: String(url), body }]);
+    const full = (global.__chatChunks || []).map(x => 'data: ' + JSON.stringify(x)).join('\r\n\r\n') + '\r\n';
+    const bytes = new TextEncoder().encode(full);
+    return { ok: true, status: 200, body: new ReadableStream({ start(c) { for (let i = 0; i < bytes.length; i += 11) c.enqueue(bytes.slice(i, i + 11)); c.close(); } }) };
+  }
   if (String(url).includes('streamGenerateContent')) {
     if (global.__chatFail) return { ok: false, status: global.__chatFail, body: null };
     const enc = new TextEncoder();
@@ -81,7 +92,7 @@ function mkWebhookReq(payload, { sign = true } = {}) {
 const incoming = (id, from, msg) => ({ entry: [{ changes: [{ value: { contacts: [{ wa_id: from, profile: { name: 'Jane' } }], messages: [{ id, from, ...msg }] } }] }] });
 const sentTo = (to) => calls.filter(c => c.url.includes('/123/messages') && c.body?.to === to);
 const telegram = () => calls.filter(c => c.url.includes('api.telegram.org'));
-const reset = () => { calls = []; store._reset(); geminiDown = false; };
+const reset = () => { calls = []; store._reset(); geminiDown = false; if (chat._resetSearch) chat._resetSearch(); };
 
 (async () => {
   // --- util ---
@@ -589,6 +600,36 @@ const reset = () => { calls = []; store._reset(); geminiDown = false; };
   res = mkRes(); await whatsapp(mkWebhookReq(incoming('m11', '254799999999', { type: 'text', text: { body: 'hi' } })), res);
   assert.strictEqual(calls.find(c => /enerateContent/.test(c.url) && c.body && c.body.systemInstruction).body.generationConfig.thinkingConfig.thinkingLevel, 'low');
   console.log('ok  thinkingLevel "low" is sent for chat, WhatsApp, SMS and calls, and dropped automatically for a model that refuses it');
+
+  // ================= Real Gemini stream format, and web search being refused =================
+  reset(); gem._reset(); chat._resetSearch();
+  global.__crlf = true;
+  global.__chatChunks = [
+    sseChunk('First part, '),
+    { candidates: [{ content: { parts: [{ text: 'private reasoning that must not be shown', thought: true }, { text: 'second part, ' }] } }] },
+    sseChunk('and the last part with no blank line after it.')
+  ];
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'hello' }], '14.14.14.0'), res);
+  ev = events(res);
+  assert.strictEqual(ev.filter(e => e.t === 'text').map(e => e.v).join(''), 'First part, second part, and the last part with no blank line after it.');
+  assert.ok(!ev.some(e => e.t === 'error') && !JSON.stringify(ev).includes('private reasoning'));
+  global.__crlf = false;
+  console.log('ok  Gemini\'s real CRLF stream format is read correctly, split anywhere, last event kept, thinking text hidden');
+
+  reset(); gem._reset(); chat._resetSearch(); global.__chatCalls = [];
+  global.__noSearch = true; global.__chatChunks = [sseChunk('Here is an answer that needed no web search.')];
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'compare medical covers' }], '14.14.14.1'), res);
+  ev = events(res);
+  assert.ok(ev.some(e => e.t === 'text' && e.v.includes('needed no web search')) && !ev.some(e => e.t === 'error'));
+  assert.strictEqual(global.__chatCalls.length, 2, 'first with search (refused), then without');
+  assert.ok(global.__chatCalls[0].body.tools && !global.__chatCalls[1].body.tools);
+  assert.ok(global.__chatCalls[1].body.systemInstruction.parts[0].text.includes('WEB SEARCH IS NOT AVAILABLE'), 'the model is told it cannot search');
+  assert.ok(!global.__chatCalls[0].body.systemInstruction.parts[0].text.includes('WEB SEARCH IS NOT AVAILABLE'));
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'and for a family of four?' }], '14.14.14.2'), res);
+  assert.strictEqual(global.__chatCalls.length, 3, 'the next message skips the refused search and goes straight to the answer');
+  assert.ok(!global.__chatCalls[2].body.tools);
+  global.__noSearch = false; chat._resetSearch();
+  console.log('ok  web search refused (429): chat answers without it, remembers for ten minutes, and never claims it searched');
 
   console.log('\nAll tests passed');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

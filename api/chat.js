@@ -32,9 +32,12 @@ function sanitizeMessages(raw) {
   return msgs;
 }
 
+// When Google refuses web search (quota, plan or unsupported), stop asking for a while: it only slows every answer down.
+let searchOffUntil = 0;
+
 function ask(msgs, useSearch, signal) {
   const body = {
-    systemInstruction: { parts: [{ text: buildChatPrompt() }] },
+    systemInstruction: { parts: [{ text: buildChatPrompt(Date.now(), { search: useSearch }) }] },
     contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.text }] })),
     // Newer Gemini models "think" before answering and thinking counts toward this limit, so keep it generous.
     generationConfig: { maxOutputTokens: 4096 }
@@ -95,39 +98,54 @@ module.exports = async function handler(req, res) {
   const why = async (r, where) => (r.error ? console.error(`${where}: ${r.status} ${r.error.message}`) : logFailure(r, where));
 
   try {
-    let r = await attempt(true);
-    if (!r.ok) { await why(r, 'chat (with search)'); r = await attempt(false); } // slow, refused or failing with search: answer without it
+    const searchOff = Date.now() < searchOffUntil;
+    let r = searchOff ? { ok: false, skip: true } : await attempt(true);
+    if (!r.ok) { // slow, refused or failing with search: answer without it
+      if (!r.skip) {
+        await why(r, 'chat (with search)');
+        if ([400, 403, 429].includes(r.status)) searchOffUntil = Date.now() + 10 * 60 * 1000;
+      }
+      r = await attempt(false);
+    }
     if (!r.ok) { await why(r, 'chat'); throw new Error('gemini ' + r.status); }
 
     const reader = r.body.getReader();
     const dec = new TextDecoder();
+
+    // One server-sent event from Google: pull out the answer text, the searches it ran and its sources.
+    const onEvent = (raw) => {
+      for (const line of raw.split('\n')) {
+        if (!line.startsWith('data:')) continue;
+        let j; try { j = JSON.parse(line.slice(5).trim()); } catch { continue; }
+        const cand = j.candidates && j.candidates[0];
+        if (!cand) continue;
+        const gm = cand.groundingMetadata;
+        if (gm) {
+          const fresh = (gm.webSearchQueries || []).filter(q => !queries.has(q));
+          fresh.forEach(q => queries.add(q));
+          if (fresh.length) send(res, { t: 'queries', v: fresh.slice(0, 3) });
+          (gm.groundingChunks || []).forEach(g => {
+            if (g.web && g.web.uri && /^https?:\/\//.test(g.web.uri)) sources.set(g.web.title || g.web.uri, g.web.uri);
+          });
+        }
+        // Skip "thought" parts: they are the model's reasoning, not the answer.
+        const text = (cand.content && cand.content.parts || []).filter(p => !p.thought).map(p => p.text || '').join('');
+        if (text) { produced = true; send(res, { t: 'text', v: text }); }
+      }
+    };
+
     let buf = '';
     for (;;) {
       const { value, done } = await reader.read();
       if (done) break;
-      buf += dec.decode(value, { stream: true });
+      // Google streams with Windows-style line endings (\r\n\r\n); normalise before looking for blank lines.
+      buf = (buf + dec.decode(value, { stream: true })).replace(/\r\n/g, '\n');
       const parts = buf.split('\n\n');
       buf = parts.pop();
-      for (const part of parts) {
-        for (const line of part.split('\n')) {
-          if (!line.startsWith('data:')) continue;
-          let j; try { j = JSON.parse(line.slice(5).trim()); } catch { continue; }
-          const cand = j.candidates && j.candidates[0];
-          if (!cand) continue;
-          const gm = cand.groundingMetadata;
-          if (gm) {
-            const fresh = (gm.webSearchQueries || []).filter(q => !queries.has(q));
-            fresh.forEach(q => queries.add(q));
-            if (fresh.length) send(res, { t: 'queries', v: fresh.slice(0, 3) });
-            (gm.groundingChunks || []).forEach(c => {
-              if (c.web && c.web.uri && /^https?:\/\//.test(c.web.uri)) sources.set(c.web.title || c.web.uri, c.web.uri);
-            });
-          }
-          const text = (cand.content && cand.content.parts || []).map(p => p.text || '').join('');
-          if (text) { produced = true; send(res, { t: 'text', v: text }); }
-        }
-      }
+      parts.forEach(onEvent);
     }
+    buf = (buf + dec.decode()).replace(/\r\n/g, '\n');
+    if (buf.trim()) onEvent(buf); // the last event may arrive without a trailing blank line
     if (!produced) send(res, { t: 'text', v: 'I could not answer that. Please contact our team on WhatsApp or call +254 115 129 088 and we will help you.' });
     if (sources.size) send(res, { t: 'sources', v: [...sources].slice(0, 6).map(([title, uri]) => ({ title, uri })) });
     const rules = classify(lastUser);
@@ -142,3 +160,4 @@ module.exports = async function handler(req, res) {
     res.end();
   }
 };
+module.exports._resetSearch = () => { searchOffUntil = 0; };
