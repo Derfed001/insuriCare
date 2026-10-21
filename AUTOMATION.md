@@ -47,7 +47,7 @@ The assistant answers clients in your formal **client-mode** style (greeting by 
 3. Save as `TELEGRAM_BOT_TOKEN` and `TELEGRAM_CHAT_ID`.
 
 ### 2. The assistant brain (choose one)
-- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health` (add `?test=1` for a deeper test that really asks Gemini for an answer, with and without web search, and shows Google's reason and the time taken, or a timeout after 15 seconds, if it fails): it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
+- **Gemini (free tier):** create a key at aistudio.google.com, set `GEMINI_API_KEY`. Leave `GEMINI_MODEL` empty: the code picks a current Flash model itself and skips any that Google has retired (`gemini-2.5-flash` was shut down on 16 Oct 2026). To check your setup, open `https://YOUR-SITE.vercel.app/api/health` (add `?test=1` for a deeper test that really asks Gemini for an answer, with and without web search, and shows Google's reason and the time taken, or a timeout after 8 seconds, if it fails): it lists what is set, whether Gemini answers, and warns about common mistakes, without showing any secret.
 - **Your own voice/text agent:** host it anywhere with a stable HTTPS endpoint (a Colab notebook link is not an endpoint) and set `ASSISTANT_URL`. If `GEMINI_API_KEY` is also set, Gemini answers whenever your agent is offline (+ optional `ASSISTANT_TOKEN`). The site sends:
   ```json
   { "channel": "whatsapp", "phone": "2547...", "name": "Jane", "text": "…",
@@ -86,6 +86,7 @@ Project → Settings → Environment Variables: add everything from `.env.exampl
 Run the offline tests any time with `npm test` (no accounts needed).
 
 ## Website chatbot (Makokha)
+- **Speed:** answers use Gemini's `thinkingLevel: low` so replies start quickly. Set `GEMINI_THINKING` to `medium` or `high` for deeper answers (slower), or `off` to leave Google's default.
 - **Name:** the assistant is called **Makokha** on the website, WhatsApp, SMS and calls, and always says it is an AI.
 - **What it knows:** it reads your own website text (services, claims steps, checklists, FAQs, contacts, hours) and searches the web for current insurer facts. After you edit the site, redeploy and it knows the changes.
 - **Setup:** nothing beyond `GEMINI_API_KEY` and a redeploy. Test it by opening the site and asking "Compare medical covers for a family of four".

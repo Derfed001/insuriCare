@@ -38,6 +38,9 @@ global.fetch = async (url, opts = {}) => {
   const deadHit = (global.__deadModels || []).find(m => String(url).includes('models/' + m));
   if (deadHit) return { ok: false, status: 404, body: null, json: async () => ({}), text: async () => '{"error":{"code":404}}' };
   if (/\/v1beta\/models\/[^:?]+$/.test(String(url))) return { ok: true, status: 200, json: async () => ({ name: 'models/x' }), text: async () => '{}' };
+  if (global.__rejectThinking && body && body.generationConfig && body.generationConfig.thinkingConfig && /enerateContent/.test(String(url))) {
+    return { ok: false, status: 400, body: null, json: async () => ({}), text: async () => '{"error":{"message":"thinking level not supported"}}' };
+  }
   if (global.__hang && /enerateContent/.test(String(url)) && (global.__hang === 'all' || (body && body.tools))) {
     return new Promise((_, rej) => opts.signal && opts.signal.addEventListener('abort', () => rej(Object.assign(new Error('aborted'), { name: 'AbortError' }))));
   }
@@ -478,7 +481,7 @@ const reset = () => { calls = []; store._reset(); geminiDown = false; };
   let hj = JSON.parse(res.body);
   assert.strictEqual(hj.ok, true); assert.ok(hj.gemini.working && hj.africastalking.apiKeySet && hj.africastalking.webhookSecretSet);
   assert.ok(!JSON.stringify(hj).includes('atkey') && !JSON.stringify(hj).includes('sekret'), 'no secret value is ever shown');
-  process.env.atsk_fakekey123 = 'x'; global.__deadModels = ['gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash']; gem._reset();
+  process.env.atsk_fakekey123 = 'x'; global.__deadModels = ['gemini-3.5-flash-lite', 'gemini-3.1-flash-lite', 'gemini-flash-latest', 'gemini-3.6-flash', 'gemini-3.5-flash']; gem._reset();
   res = mkRes(); res.setHeader = () => {}; await health({ headers: { 'x-forwarded-for': '10.0.0.2' } }, res);
   hj = JSON.parse(res.body);
   assert.strictEqual(hj.ok, false);
@@ -569,6 +572,23 @@ const reset = () => { calls = []; store._reset(); geminiDown = false; };
   assert.ok(dj.probe.every(x => x.status === 'timeout' && /did not answer within/.test(x.hint)), 'health shows timeouts instead of hanging');
   global.__hang = false; delete process.env.CHAT_FIRST_BYTE_MS; delete process.env.HEALTH_PROBE_MS; gem._reset();
   console.log('ok  slow or stuck Gemini: chat retries without web search within seconds, health reports timeouts, nothing hangs');
+
+  // ================= Short thinking = fast answers (Gemini 3 Flash models think for a long time by default) =================
+  reset(); gem._reset(); global.__chatChunks = [sseChunk('Quick answer.')]; global.__chatCalls = [];
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'hello' }], '14.14.14.1'), res);
+  assert.strictEqual(global.__chatCalls.at(-1).body.generationConfig.thinkingConfig.thinkingLevel, 'low');
+  // a model that refuses thinkingLevel is asked again without it
+  reset(); gem._reset(); global.__rejectThinking = true; global.__chatCalls = [];
+  res = mkRes(); await chat(chatReq([{ role: 'user', text: 'hello again' }], '14.14.14.2'), res);
+  ev = events(res);
+  assert.ok(ev.some(e => e.t === 'text' && e.v.includes('Quick answer')) && !ev.some(e => e.t === 'error'));
+  assert.ok(!global.__chatCalls.at(-1).body.generationConfig.thinkingConfig, 'retried without thinkingLevel');
+  global.__rejectThinking = false;
+  // the WhatsApp / SMS / call assistant uses it too
+  reset(); gem._reset(); geminiReply = { reply: 'Reply.', escalate: false, urgency: 'normal', reason: '' };
+  res = mkRes(); await whatsapp(mkWebhookReq(incoming('m11', '254799999999', { type: 'text', text: { body: 'hi' } })), res);
+  assert.strictEqual(calls.find(c => /enerateContent/.test(c.url) && c.body && c.body.systemInstruction).body.generationConfig.thinkingConfig.thinkingLevel, 'low');
+  console.log('ok  thinkingLevel "low" is sent for chat, WhatsApp, SMS and calls, and dropped automatically for a model that refuses it');
 
   console.log('\nAll tests passed');
 })().catch(e => { console.error('FAIL', e); process.exit(1); });

@@ -77,13 +77,13 @@ module.exports = async function handler(req, res) {
   const sources = new Map();
   let produced = false;
 
-  // One attempt, abandoned if Gemini has not started answering within CHAT_FIRST_BYTE_MS (default 20 s).
-  const firstByteMs = parseInt(process.env.CHAT_FIRST_BYTE_MS || '20000', 10);
+  // One attempt, abandoned if Gemini has not started answering in time (CHAT_FIRST_BYTE_MS overrides).
+  const override = parseInt(process.env.CHAT_FIRST_BYTE_MS || '0', 10);
   const attempt = async (useSearch) => {
     const a = new AbortController();
     const link = () => a.abort();
     ctl.signal.addEventListener('abort', link);
-    const t = setTimeout(() => a.abort(), firstByteMs);
+    const t = setTimeout(() => a.abort(), override || (useSearch ? 12000 : 20000)); // web search gets 12 s, then the faster no-search answer gets 20 s
     try {
       return await ask(msgs, useSearch, a.signal);
     } catch (e) {

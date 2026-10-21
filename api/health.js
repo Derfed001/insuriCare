@@ -54,7 +54,7 @@ module.exports = async function handler(req, res) {
         if (status === 'error') return 'The request failed before reaching Google: ' + detail + ' If it mentions an invalid header value, the key has a space or line break: paste it again.';
         return '';
       };
-      const limit = parseInt(process.env.HEALTH_PROBE_MS || '15000', 10);
+      const limit = parseInt(process.env.HEALTH_PROBE_MS || '8000', 10);
       const run = async (label, { search = false, stream = false } = {}) => {
         const t0 = Date.now();
         const ctl = new AbortController();
