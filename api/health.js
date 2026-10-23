@@ -83,7 +83,25 @@ module.exports = async function handler(req, res) {
           clearTimeout(timer);
         }
       };
-      probe = await Promise.all([run('answer'), run('answer with web search', { search: true }), run('streaming', { stream: true })]);
+      const tavilyKey = String(process.env.TAVILY_API_KEY || '').trim();
+      const runTavily = async () => {
+        const t0 = Date.now(); const ctl = new AbortController(); const timer = setTimeout(() => ctl.abort(), 10000);
+        try {
+          const r = await fetch('https://api.tavily.com/search', {
+            method: 'POST', signal: ctl.signal,
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${tavilyKey}` },
+            body: JSON.stringify({ query: 'Insurance Regulatory Authority Kenya', search_depth: 'basic', max_results: 1 })
+          });
+          const ms = Date.now() - t0;
+          if (r.ok) return { test: 'web research (Tavily)', status: r.status, ok: true, ms };
+          const h = r.status === 401 ? 'Tavily rejected the key. Copy it again from app.tavily.com into TAVILY_API_KEY (no spaces).'
+            : (r.status === 429 || r.status === 432 || r.status === 433) ? 'Tavily says the free monthly credits or the rate limit are used up. They reset on the 1st of the month.' : '';
+          return { test: 'web research (Tavily)', status: r.status, ok: false, ms, hint: h };
+        } catch (e) {
+          return { test: 'web research (Tavily)', status: e && e.name === 'AbortError' ? 'timeout' : 'error', ok: false, ms: Date.now() - t0, hint: 'Could not reach Tavily.' };
+        } finally { clearTimeout(timer); }
+      };
+      probe = await Promise.all([run('answer'), run('answer with web search', { search: true }), run('streaming', { stream: true }), ...(tavilyKey ? [runTavily()] : [])]);
       if (probe.every(x => x.ok)) warnings.push('Deep test passed: Gemini answers normally, with web search and streaming.');
     }
   }
@@ -92,6 +110,7 @@ module.exports = async function handler(req, res) {
   if (Object.keys(process.env).some(k => /^atsk_/i.test(k) || /^AIza/.test(k))) {
     warnings.push('A Vercel variable has a name that looks like an API key. Delete it and add it again with the correct name (for example AT_API_KEY) and the key in the Value box. Also generate a new key, because names are not secret.');
   }
+  if (!has('TAVILY_API_KEY')) warnings.push('Live web research is off. Add TAVILY_API_KEY (free at tavily.com, no card) so the assistant can search the web and insurers\' websites and cite its sources.');
   if (!has('AT_USERNAME') || !has('AT_API_KEY')) warnings.push('Africa\'s Talking is not set up (AT_USERNAME and AT_API_KEY). SMS replies, SMS alerts and the phone line need them.');
   if (!has('AT_WEBHOOK_SECRET')) warnings.push('AT_WEBHOOK_SECRET is not set. The SMS and phone callbacks reject every request without it.');
   if (!has('OWNER_PHONE')) warnings.push('OWNER_PHONE is not set, so alerts and the "speak to a team member" transfer cannot reach you.');
@@ -102,6 +121,7 @@ module.exports = async function handler(req, res) {
     ...(probe ? { probe } : {}),
     africastalking: { usernameSet: has('AT_USERNAME'), apiKeySet: has('AT_API_KEY'), webhookSecretSet: has('AT_WEBHOOK_SECRET'), sandbox: has('AT_SANDBOX') },
     alerts: { ownerPhoneSet: has('OWNER_PHONE'), smsAlertsOn: process.env.ALERT_SMS !== '0' },
+    research: { tavilyKeySet: has('TAVILY_API_KEY'), dailySearchCap: parseInt(process.env.SEARCH_DAILY_LIMIT || '30', 10) },
     memory: { upstashSet: has('UPSTASH_REDIS_REST_URL') && has('UPSTASH_REDIS_REST_TOKEN') },
     warnings
   }, null, 2));

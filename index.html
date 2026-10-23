@@ -143,13 +143,10 @@
   .hero-photo{position:relative;margin:0;border-radius:28px;overflow:hidden;aspect-ratio:4/5;max-height:600px;width:100%;background:#F3E3CC;box-shadow:0 30px 70px rgba(10,37,64,.20);}
   .hero-photo img{width:100%;height:100%;object-fit:cover;object-position:var(--hero-focus,50% 35%);display:block;}
   .hero-photo.illus img{object-position:50% 50%;}
-  .hero-chip{position:absolute;left:16px;top:16px;right:16px;max-width:300px;display:flex;align-items:center;gap:10px;background:rgba(255,255,255,.94);backdrop-filter:blur(6px);color:var(--navy);border-radius:14px;padding:12px 14px;font-size:.88rem;font-weight:600;box-shadow:0 10px 30px rgba(10,37,64,.18);}
-  .hero-chip i{flex-shrink:0;width:30px;height:30px;border-radius:50%;background:var(--teal);display:flex;align-items:center;justify-content:center;}
   @media (max-width:900px){
     .hero-photo{order:-1;border-radius:0 0 26px 26px;aspect-ratio:4/3.3;max-height:none;box-shadow:none;}
     .hero-photo.illus img{object-position:50% 66%;}
-    .hero-chip{display:none;}
-    .hero::before{display:none;}
+      .hero::before{display:none;}
   }
 
   /* ===== Marquee partner strip ===== */
@@ -610,6 +607,13 @@
   .msg .sources{margin-top:8px;font-size:.75rem;color:var(--muted);}
   .msg .sources a{display:inline-block;margin:4px 6px 0 0;padding:3px 9px;border:1px solid var(--line);border-radius:999px;color:var(--navy);text-decoration:none;background:var(--mist);}
   .msg .sources a:hover{border-color:var(--teal);color:var(--teal-dark);}
+  .msg .status-note{font-size:.8rem;color:var(--muted);margin-left:8px;}
+  .msg sup.cite{font-size:.72em;line-height:0;}
+  .msg sup.cite a{display:inline-block;min-width:1.35em;text-align:center;padding:1px 4px;margin:0 1px;border-radius:6px;background:var(--mist);color:var(--teal-dark);text-decoration:none;font-weight:700;}
+  .msg sup.cite a:hover{background:var(--teal);color:#fff;}
+  .msg .sources a b{color:var(--teal-dark);margin-right:5px;}
+  .msg .sources a em{font-style:normal;font-size:.68rem;color:var(--teal-dark);margin-left:5px;}
+  .msg .sources a.official{border-color:var(--teal);}
   .typing{display:inline-flex;gap:5px;align-items:center;padding:4px 2px;}
   .typing i{width:7px;height:7px;border-radius:50%;background:var(--muted);opacity:.5;animation:blink 1.2s infinite ease-in-out;}
   .typing i:nth-child(2){animation-delay:.2s;} .typing i:nth-child(3){animation-delay:.4s;}
@@ -724,7 +728,6 @@
     <figure class="hero-photo" id="heroPhoto">
       <img src="assets/hero/hero.jpg" alt="A family together, sheltered and protected" width="800" height="1000" fetchpriority="high"
            onerror="this.onerror=null;this.src='assets/hero/hero-illustration.svg';this.parentElement.classList.add('illus')">
-      <figcaption class="hero-chip"><i aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg></i>Life, medical, car and business cover</figcaption>
     </figure>
   </div>
   <div class="wrap status-wrap">
@@ -1608,6 +1611,15 @@
       close(); return html;
     }
 
+    // The assistant cites passages as [1], [2]... Turn each into a small link to that source; drop numbers that match no source.
+    function linkCites(html, list){
+      if (!list.length) return html;
+      const by = {}; list.forEach((s, i) => { by[s.n || i + 1] = s; });
+      return html.replace(/\[(\d{1,2})\]/g, (m, n) => by[n]
+        ? '<sup class="cite"><a href="' + esc(by[n].uri) + '" target="_blank" rel="noopener noreferrer" title="' + esc(by[n].host || by[n].title || '') + '">' + n + '</a></sup>'
+        : '');
+    }
+
     const nearBottom = () => msgs.scrollHeight - msgs.scrollTop - msgs.clientHeight < 90;
     const toBottom = () => { msgs.scrollTop = msgs.scrollHeight; };
     function addMsg(role, html){
@@ -1664,7 +1676,8 @@
       addMsg('user', text);
       history.push({ role:'user', text });
 
-      const bubble = addMsg('bot', '<span class="typing" aria-label="Makokha is typing"><i></i><i></i><i></i></span>');
+      const TYPING = '<span class="typing" aria-label="Makokha is typing"><i></i><i></i><i></i></span>';
+      const bubble = addMsg('bot', TYPING);
       bubble.setAttribute('aria-hidden', 'true');
       let acc = '', queries = [], sources = [], hint = null, errored = false;
 
@@ -1684,6 +1697,7 @@
             if (!p.startsWith('data:')) continue;
             let ev; try { ev = JSON.parse(p.slice(5).trim()); } catch (_) { continue; }
             if (ev.t === 'text'){ const stick = nearBottom(); acc += ev.v; bubble.innerHTML = md(acc); if (stick) toBottom(); }
+            else if (ev.t === 'status'){ if (!acc) bubble.innerHTML = TYPING + '<span class="status-note">' + esc(ev.v) + '</span>'; }
             else if (ev.t === 'queries'){ queries.push(...ev.v); }
             else if (ev.t === 'sources'){ sources = ev.v; }
             else if (ev.t === 'escalate'){ hint = ev; }
@@ -1696,11 +1710,15 @@
         bubble.innerHTML = md(acc);
       }
 
-      // finish: searches and sources, accessibility, history
+      // finish: citations, searches and sources, accessibility, history
+      const good = sources.filter(s => /^https?:\/\//.test(s.uri));
       let extra = '';
       if (queries.length) extra += '<div class="searched">Searched the web for: ' + queries.map(q => esc(q)).join('; ') + '</div>';
-      if (sources.length) extra += '<div class="sources">Sources: ' + sources.filter(s => /^https?:\/\//.test(s.uri)).map(s => '<a href="' + esc(s.uri) + '" target="_blank" rel="noopener noreferrer">' + esc(s.title) + '</a>').join('') + '</div>';
-      if (extra) bubble.insertAdjacentHTML('beforeend', extra);
+      if (good.length) extra += '<div class="sources">Sources: ' + good.map((s, i) => {
+        const label = s.kind === 'insurer' ? 'official insurer' : s.kind === 'regulator' ? 'official regulator' : '';
+        return '<a href="' + esc(s.uri) + '" target="_blank" rel="noopener noreferrer"' + (label ? ' class="official"' : '') + '><b>' + (s.n || i + 1) + '</b>' + esc(s.host || s.title) + (label ? '<em>' + label + '</em>' : '') + '</a>';
+      }).join('') + '</div>';
+      bubble.innerHTML = linkCites(md(acc), good) + extra;
       bubble.removeAttribute('aria-hidden');
       sr.textContent = ''; setTimeout(() => { sr.textContent = acc; }, 50);
       if (acc && !errored) history.push({ role:'assistant', text: acc });

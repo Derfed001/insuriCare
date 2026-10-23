@@ -1,11 +1,13 @@
 /**
- * Website chatbot: streams answers (Server-Sent Events) from Gemini with Google Search grounding,
- * so it can look up current insurer information on the web. Stateless: the browser sends the history.
+ * Website chatbot: streams answers (Server-Sent Events) from Gemini. For insurer-specific and current questions it
+ * researches first (Tavily web search over insurers' sites and the wider web, see _lib/research.js) and must cite what it found.
+ * Without a Tavily key it falls back to Gemini's own Google Search grounding. Stateless: the browser sends the history.
  *
  * Events (one JSON object per `data:` line):
- *   {t:'queries', v:[...]}  web searches the model ran
+ *   {t:'status', v:'...'}   progress note while researching
+ *   {t:'queries', v:[...]}  web searches that were run
  *   {t:'text', v:'...'}     next piece of the answer
- *   {t:'sources', v:[{title,uri}]}
+ *   {t:'sources', v:[{n,title,uri,host,kind}]}  kind: insurer | regulator | other
  *   {t:'escalate', urgency, reasons}  the message looks like it needs a person
  *   {t:'error', v:'...'} / {t:'done'}
  */
@@ -13,6 +15,7 @@ const { clean, classify } = require('./_lib/util');
 const store = require('./_lib/store');
 const { buildChatPrompt } = require('./_lib/chatPrompt');
 const { callGemini, logFailure } = require('./_lib/gemini');
+const research = require('./_lib/research');
 
 const MAX_MESSAGES = 12;
 const MAX_CHARS = 1200;
@@ -35,14 +38,16 @@ function sanitizeMessages(raw) {
 // When Google refuses web search (quota, plan or unsupported), stop asking for a while: it only slows every answer down.
 let searchOffUntil = 0;
 
-function ask(msgs, useSearch, signal) {
+function ask(msgs, { tools, mode, context }, signal) {
+  const contents = msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.text }] }));
+  if (context) contents[contents.length - 1].parts[0].text += '\n\n' + context; // the fetched pages ride with the question, never in stored history
   const body = {
-    systemInstruction: { parts: [{ text: buildChatPrompt(Date.now(), { search: useSearch }) }] },
-    contents: msgs.map(m => ({ role: m.role === 'assistant' ? 'model' : 'user', parts: [{ text: m.text }] })),
+    systemInstruction: { parts: [{ text: buildChatPrompt(Date.now(), { mode: tools ? 'grounding' : mode }) }] },
+    contents,
     // Newer Gemini models "think" before answering and thinking counts toward this limit, so keep it generous.
     generationConfig: { maxOutputTokens: 4096 }
   };
-  if (useSearch) body.tools = [{ google_search: {} }];
+  if (tools) body.tools = [{ google_search: {} }];
   return callGemini({ body, stream: true, signal });
 }
 
@@ -82,13 +87,13 @@ module.exports = async function handler(req, res) {
 
   // One attempt, abandoned if Gemini has not started answering in time (CHAT_FIRST_BYTE_MS overrides).
   const override = parseInt(process.env.CHAT_FIRST_BYTE_MS || '0', 10);
-  const attempt = async (useSearch) => {
+  const attempt = async (opts) => {
     const a = new AbortController();
     const link = () => a.abort();
     ctl.signal.addEventListener('abort', link);
-    const t = setTimeout(() => a.abort(), override || (useSearch ? 12000 : 20000)); // web search gets 12 s, then the faster no-search answer gets 20 s
+    const t = setTimeout(() => a.abort(), override || (opts.tools ? 12000 : 20000)); // Google's own search gets 12 s, then the plain answer gets 20 s
     try {
-      return await ask(msgs, useSearch, a.signal);
+      return await ask(msgs, opts, a.signal);
     } catch (e) {
       return { ok: false, status: e && e.name === 'AbortError' ? 'timeout' : 'error', error: e };
     } finally {
@@ -98,14 +103,40 @@ module.exports = async function handler(req, res) {
   const why = async (r, where) => (r.error ? console.error(`${where}: ${r.status} ${r.error.message}`) : logFailure(r, where));
 
   try {
-    const searchOff = Date.now() < searchOffUntil;
-    let r = searchOff ? { ok: false, skip: true } : await attempt(true);
-    if (!r.ok) { // slow, refused or failing with search: answer without it
-      if (!r.skip) {
-        await why(r, 'chat (with search)');
-        if ([400, 403, 429].includes(r.status)) searchOffUntil = Date.now() + 10 * 60 * 1000;
+    // ---- 1) research: plan the search, search the web and insurers' sites, pick the best passages ----
+    let mode = 'grounding', context = '', found = null;
+    if (research.configured()) {
+      try {
+        found = await Promise.race([
+          research.research(msgs, { onStatus: v => send(res, { t: 'status', v }) }),
+          new Promise((_, rej) => setTimeout(() => rej(new Error('research timeout')), parseInt(process.env.RESEARCH_TIMEOUT_MS || '16000', 10)))
+        ]);
+      } catch (e) {
+        console.error('research failed:', e.message);
+        found = { available: true, ran: true, failed: true };
       }
-      r = await attempt(false);
+      if (found.ran && found.sources && found.sources.length) { mode = 'sources'; context = found.context; }
+      else if (found.ran && !found.failed) mode = 'empty';
+      else if (found.available && found.ran === false) mode = 'skipped';
+      if (found.queries && found.queries.length && found.ran && !found.failed) send(res, { t: 'queries', v: found.queries });
+    }
+
+    // ---- 2) answer ----
+    let r;
+    if (mode === 'grounding') {
+      // no Tavily key, or research failed: try Gemini's own Google Search, then answer without any search
+      const searchOff = Date.now() < searchOffUntil;
+      r = searchOff ? { ok: false, skip: true } : await attempt({ tools: true });
+      if (!r.ok) {
+        if (!r.skip) {
+          await why(r, 'chat (with search)');
+          if ([400, 403, 429].includes(r.status)) searchOffUntil = Date.now() + 10 * 60 * 1000;
+        }
+        r = await attempt({ tools: false, mode: 'none' });
+      }
+    } else {
+      r = await attempt({ tools: false, mode, context });
+      if (!r.ok && context) { await why(r, 'chat (with sources)'); r = await attempt({ tools: false, mode, context: context.slice(0, 6000) + '\n</web_sources>' }); }
     }
     if (!r.ok) { await why(r, 'chat'); throw new Error('gemini ' + r.status); }
 
@@ -147,7 +178,8 @@ module.exports = async function handler(req, res) {
     buf = (buf + dec.decode()).replace(/\r\n/g, '\n');
     if (buf.trim()) onEvent(buf); // the last event may arrive without a trailing blank line
     if (!produced) send(res, { t: 'text', v: 'I could not answer that. Please contact our team on WhatsApp or call +254 115 129 088 and we will help you.' });
-    if (sources.size) send(res, { t: 'sources', v: [...sources].slice(0, 6).map(([title, uri]) => ({ title, uri })) });
+    if (found && found.sources && found.sources.length && mode === 'sources') send(res, { t: 'sources', v: found.sources });
+    else if (sources.size) send(res, { t: 'sources', v: [...sources].slice(0, 6).map(([title, uri], i) => ({ n: i + 1, title, uri, host: (() => { try { return new URL(uri).hostname; } catch { return ''; } })(), kind: 'other' })) });
     const rules = classify(lastUser);
     if (rules.urgency) send(res, { t: 'escalate', urgency: rules.urgency, reasons: rules.reasons });
     send(res, { t: 'done' });

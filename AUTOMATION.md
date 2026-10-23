@@ -100,6 +100,22 @@ Run the offline tests any time with `npm test` (no accounts needed).
 ## Forward your own phone to the assistant
 When your phone is busy, not answered or unreachable, calls can go to Makokha on your Africa's Talking voice number, and you get an SMS summary. Setup, the dial codes and a test checklist are in `docs/CALL_FORWARDING.md` (set `CALL_FORWARDED=1`, `OWNER_NAME`, `AT_VOICE_NUMBER`).
 
+## Live web research (Tavily)
+**What it does.** For any question about an insurer, product, benefit, price, eligibility, claims process, regulation or comparison, the assistant:
+1. plans one or two precise searches (a quick Gemini call), or skips searching for greetings and questions the website itself answers;
+2. searches the web **and** the insurers' own websites (Britam, CIC, Jubilee, Monarch, Definite, APA, Heritage, ICEA LION, Old Mutual, Sanlam Allianz, plus regulators such as IRA, NSSF, SHA and KRA), ranking official pages first;
+3. answers **only from those passages**, with numbered citations. Each `[1]` becomes a link to the page, official insurer and regulator pages are labelled, and the page shows "Searching the web and insurers' websites..." while it works;
+4. says plainly when sources disagree or do not answer the question, never fills the gap from memory, and treats prices as indicative.
+
+**Set up (5 minutes, free).**
+1. Create an account at tavily.com and copy your API key (starts with `tvly-`). The free plan is 1,000 credits a month with no card.
+2. In Vercel add `TAVILY_API_KEY` (type Secret), then **Redeploy**.
+3. Open `/api/health?test=1`: the line "web research (Tavily)" should show `ok: true`.
+
+**Cost control.** A basic Tavily search costs 1 credit and one research uses 1 to 3, so `SEARCH_DAILY_LIMIT` defaults to 30 a day, about 900 a month. Repeated questions are cached for 12 hours (set up Upstash so the cache is shared). If the free credits run out, the chat quietly answers without live research and the health page tells you. Prices and plans change: check tavily.com/pricing.
+
+**Limits you should know.** Search results can be wrong or out of date even when cited, and insurer websites change. The assistant shows its sources so visitors can check, tells them to confirm exact terms with the team, and never quotes an exact premium. Review its answers yourself in the first weeks.
+
 ## Africa's Talking setup (SMS and calls)
 1. Create an account at africastalking.com and an app. Note the **username** and generate an **API key**.
 2. Choose a long random string as `AT_WEBHOOK_SECRET`.
